@@ -15,6 +15,7 @@ dist/
 downloads/
 eggs/
 .eggs/
+.idea
 lib/
 lib64/
 parts/
@@ -29,6 +30,7 @@ var/
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+*.pdf
 
 # Installer logs
 pip-log.txt
