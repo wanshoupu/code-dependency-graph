@@ -6,9 +6,8 @@ import queue
 import re
 import threading
 
-from graphviz import Digraph
-
 from data_structures import Node, Edge, NodeEncoder, EdgeEncoder
+from src_analyzer import src_proc
 
 nodes_file = os.path.join(os.path.dirname(__file__), "classes.txt")
 edges_file = os.path.join(os.path.dirname(__file__), "class-dependencies.txt")
@@ -65,78 +64,23 @@ def find_neighbors(path):
     return [normalize(include) for include in include_regex.findall(code)]
 
 
-def create_graph(folder, create_cluster, label_cluster, strict):
-    """ Create a graph from a folder. """
-    # Find nodes and clusters
-    folder_to_files, nodes = source_proc(folder)
-    # Create graph
-    graph = Digraph(strict=strict)
-    # Find edges and create clusters
-    for folder in folder_to_files:
-        with graph.subgraph(name='cluster_{}'.format(folder)) as cluster:
-            for path in folder_to_files[folder]:
-                color = 'black'
-                node = normalize(path)
-                ext = get_extension(path)
-                if ext in valid_headers[0]:
-                    color = valid_headers[1]
-                if ext in valid_sources[0]:
-                    color = valid_sources[1]
-                if create_cluster:
-                    cluster.node(node)
-                else:
-                    graph.node(node)
-                neighbors = find_neighbors(path)
-                for neighbor in neighbors:
-                    if neighbor != node and neighbor in nodes:
-                        graph.edge(node, neighbor, color=color)
-            if create_cluster and label_cluster:
-                cluster.attr(label=folder)
-    return graph
-
-
-type_declare_regex = ''
-type_declare_pattern = re.compile(type_declare_regex)
-
-
-def search_type_declares(code):
-    """
-    return dictionary: {Node: code} denoting all the types defined in the src file
-    """
-    declares_blocks = [m[0] for m in (re.findall(type_declare_pattern, code))]
-
-    types = dict()
-
-    return types
-
-
-def src_proc(src_file):
-    """
-
-    return a tupe of two things
-     dictionary: {Node: code} denoting all the types defined in the src file
-     includes: list of header files included in the src file
-    """
-    with codecs.open(src_file, 'r', "utf-8", "ignore") as fd:
-        code_lines = [l.strip() for l in fd.readlines() if not l.strip().startswith('//') and l.strip()]
-        code = '\n'.join(code_lines)
-        nodes = search_type_declares(code)
-        includes = set(os.path.basename(include) for include in include_regex.findall(code))
-        return nodes, includes
-
-
-def source_proc(root_dir, max_workers=10):
+def source_proc(root_dir):
     def worker():
         while True:
             src_file = assembly_line.get()
+            src_name = os.path.basename(src_file)
             print(f'Processing {src_file}')
-            nodes, includes = src_proc(src_file)
+            ns, icls = src_proc(src_file)
+            if ns:
+                declares[src_name] = ns
+            if icls:
+                includes[src_name] = icls
             print(f'Finished {src_file}')
             assembly_line.task_done()
 
-    nodes = []
-    edges = []
-    print("process source files at capacity of {} threads".format(max_workers))
+    includes = dict()
+    declares = dict()
+    print("process source files at capacity of {} threads".format(max_queue_size))
     ths = [threading.Thread(target=worker, daemon=True) for _ in range(max_queue_size)]
     for t in ths:
         t.start()
@@ -146,17 +90,19 @@ def source_proc(root_dir, max_workers=10):
     assembly_line.join()
 
     print('All work completed')
-    return nodes, edges
+    return includes, declares
 
 
 def write_nodes(nodes):
     with open(nodes_file, "w") as fd:
-        for node in nodes:
-            json.dump(node, fd, cls=NodeEncoder)
+        for fn, ns in nodes.items():
+            for node in ns:
+                json.dump(node, fd, cls=NodeEncoder)
+                fd.write('\n')
 
 
 def write_edges(edges):
-    with open(nodes_file, "w") as fd:
+    with open(edges_file, "w") as fd:
         for edge in edges:
             json.dump(edge, fd, cls=EdgeEncoder)
 
@@ -164,15 +110,8 @@ def write_edges(edges):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('folder', help='Path to the folder to scan')
-    parser.add_argument('output', help='Path of the output file without the extension')
-    parser.add_argument('-f', '--format', help='Format of the output', default='pdf', \
-                        choices=['bmp', 'gif', 'jpg', 'png', 'pdf', 'svg'])
-    parser.add_argument('-v', '--view', action='store_true', help='View the graph')
-    parser.add_argument('-c', '--cluster', action='store_true', help='Create a cluster for each subfolder')
-    parser.add_argument('--cluster-labels', dest='cluster_labels', action='store_true', help='Label subfolder clusters')
-    parser.add_argument('-s', '--strict', action='store_true', help='Rendering should merge multi-edges', default=False)
-    # parser.add_argument('-t', '--filter', action='store_true', help='Rendering should merge multi-edges', default=False)
     args = parser.parse_args()
-    graph = create_graph(args.folder, args.cluster, args.cluster_labels, args.strict)
-    graph.format = args.format
-    graph.render(args.output, cleanup=True, view=args.view)
+    includes, declares = source_proc(args.folder)
+    write_nodes(declares)
+    print(includes)
+    print(declares)

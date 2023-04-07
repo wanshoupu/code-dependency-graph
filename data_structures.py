@@ -10,8 +10,8 @@ class RefType(Enum):
 
 
 class SourceType(Enum):
-    HEADER = re.compile(r'h|hpp')
-    CPP = re.compile(r'c|cc|cpp|c\+\+')
+    HEADER = re.compile(r'\.h|\.hpp')
+    CPP = re.compile(r'\.c|\.cc|\.cpp|\.c\+\+')
 
     @staticmethod
     def parseval(symbol):
@@ -21,14 +21,14 @@ class SourceType(Enum):
 
 
 class TypeClassifier(Enum):
-    ENUM = 'enum'
-    STRUCT = 'struct'
-    CLASS = 'class'
+    ENUM = re.compile(r'enum(?: class)?')
+    STRUCT = re.compile(r'struct')
+    CLASS = re.compile(r'class')
 
     @staticmethod
     def parseval(symbol):
         for item in list(TypeClassifier):
-            if item.value == symbol:
+            if re.fullmatch(item.value, symbol):
                 return item
 
 
@@ -54,7 +54,7 @@ class Node:
                 and self.sourceName == other.sourceName
                 and self.classifier == other.classifier)
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         return self.name
 
 
@@ -118,9 +118,11 @@ class Edge:
 
 
 if __name__ == '__main__':
-    tc = TypeClassifier.parseval('struct')
+    tc = TypeClassifier.parseval('enum class')
     print(tc)
-    st = SourceType.parseval('c++')
+    tc = TypeClassifier.parseval('enum')
+    print(tc)
+    st = SourceType.parseval('.c++')
     print(st)
     abc = Node('abc', TypeClassifier.ENUM, 'foo', SourceType.HEADER)
     abc_json = json.dumps(abc, cls=NodeEncoder)

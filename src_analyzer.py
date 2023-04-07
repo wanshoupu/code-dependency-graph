@@ -3,6 +3,7 @@ import json
 import os
 import queue
 import re
+import sys
 import threading
 
 from graphviz import Digraph
@@ -20,10 +21,10 @@ valid_headers = [['.h', '.hpp'], 'red']
 valid_sources = [['.c', '.cc', '.cpp'], 'blue']
 valid_extensions = valid_headers[0] + valid_sources[0]
 
-declare_block_regex = r'((?:class|struct|enum class|enum) +[_a-zA-Z][_a-zA-Z0-9]*)'
+declare_block_regex = r'((?:class|struct|enum(?: class)?) +[_a-zA-Z][_a-zA-Z0-9]*)'
 declare_block_pattern = re.compile(declare_block_regex)
 
-type_declare_regex = r'(class|struct|enum class|enum) +([_a-zA-Z][_a-zA-Z0-9]*)'
+type_declare_regex = r'(class|struct|enum(?: class)?) +([_a-zA-Z][_a-zA-Z0-9]*)'
 type_declare_pattern = re.compile(type_declare_regex)
 
 
@@ -34,13 +35,21 @@ def search_type_declares(code, src_file):
     basename = os.path.basename(src_file)
     sourceName, ext = os.path.splitext(basename)
     sourceType = SourceType.parseval(ext)
+    if sourceType is None:
+        print(f'Source file {src_file} do not have a valid extension', file=sys.stderr)
     result = dict()
     declare_blocks = re.split(declare_block_pattern, code)
     for i, block in enumerate(declare_blocks):
         declare = re.findall(type_declare_pattern, block)
         if declare:
             t, n = declare[0]
+            if not n:
+                print(f'Source file {block} contains invalid type declaration', file=sys.stderr)
+
             classifier = TypeClassifier.parseval(t)
+            if classifier is None:
+                print(f'Block "{block}" do not have a proper TypeClassifier', file=sys.stderr)
+
             result[Node(n, classifier, sourceName, sourceType)] = declare_blocks[i + 1]
     return result
 
@@ -70,4 +79,5 @@ def src_proc(src_file):
 if __name__ == '__main__':
     src_file = '/Users/swan/workspace/client/game-engine/Client/App/ads/include/ads/ServeAdResponse.h'
     nodes, includes = src_proc(src_file)
-    print(nodes, includes)
+    print(nodes)
+    print(includes)
