@@ -108,7 +108,7 @@ class CustomEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-class CustomDecoder(json.JSONDecoder):
+class TypeDependencyDecoder(json.JSONDecoder):
     def __init__(self, *args, **kwargs):
         json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
 
@@ -153,11 +153,11 @@ if __name__ == '__main__':
 
     abc = TypeNode('abc', TypeClassifier.ENUM, 'foo', SourceType.HEADER)
     abc_json = json.dumps(abc, cls=CustomEncoder)
-    resurrected_abc = json.loads(abc_json, cls=CustomDecoder)
+    resurrected_abc = json.loads(abc_json, cls=TypeDependencyDecoder)
     print(f'original: {abc}\njson: {abc_json}\nresurrected: {resurrected_abc}')
 
     foo = TypeNode('Foo', TypeClassifier.CLASS, 'bar', SourceType.CPP)
     edge = Edge(foo, abc, RefType.COMPOSITION)
     edge_json = json.dumps(edge, cls=CustomEncoder)
-    resurrected_edge = json.loads(edge_json, cls=CustomDecoder)
+    resurrected_edge = json.loads(edge_json, cls=TypeDependencyDecoder)
     print(f'original: {edge}\njson: {edge_json}\n resurrected: {resurrected_edge}')

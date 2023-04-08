@@ -10,8 +10,8 @@ from typing import Dict, Set
 from data_structures import SourceNode, Edge, CustomEncoder, TypeNode, RefType, CodeNode
 from src_analyzer import src_proc
 
-nodes_file = os.path.join(os.path.dirname(__file__), "types.txt")
-edges_file = os.path.join(os.path.dirname(__file__), "type-dependencies.txt")
+node_file = os.path.join(os.path.dirname(__file__), "types.txt")
+edge_file = os.path.join(os.path.dirname(__file__), "type-dependencies.txt")
 
 max_queue_size = 7
 assembly_line = queue.Queue(max_queue_size)
@@ -66,6 +66,11 @@ def find_neighbors(path):
 
 
 def source_proc(root_dir):
+    """
+    return a tuple (includes, declares)
+    includes: dict{src_file : set(includes)}
+    declares: dict{src_file : dict{TypeNode : CodeNode}}
+    """
     def worker():
         while True:
             src_file = assembly_line.get()
@@ -95,14 +100,14 @@ def source_proc(root_dir):
 
 
 def write_nodes(nodes):
-    with open(nodes_file, "w") as fd:
+    with open(node_file, "w") as fd:
         for node in nodes:
             json.dump(node, fd, cls=CustomEncoder)
             fd.write('\n')
 
 
 def write_edges(edges):
-    with open(edges_file, "w") as fd:
+    with open(edge_file, "w") as fd:
         for edge in edges:
             json.dump(edge, fd, cls=CustomEncoder)
             fd.write('\n')
@@ -144,10 +149,23 @@ def dep_analysis(folder):
     return nodes, edges
 
 
+def verify_data(nodes, edges):
+    typeNames = dict()
+    for n in nodes:
+        assert n.name not in typeNames, f'Name conflict {n} <--> {typeNames[n.name]}'
+
+    for edge in edges:
+        caller = edge.caller
+        callee = edge.callee
+        assert caller in nodes, f'{caller} not found'
+        assert callee in nodes, f'{callee} not found'
+    print('Data verified and no anomaly found')
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('folder', help='Path to the folder to scan')
     args = parser.parse_args()
     nodes, edges = dep_analysis(args.folder)
+    verify_data(nodes, edges)
     write_nodes(nodes)
     write_edges(edges)
