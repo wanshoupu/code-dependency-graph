@@ -7,7 +7,7 @@ import re
 import threading
 from typing import Dict, Set
 
-from data_structures import SourceNode, Edge, NodeEncoder, EdgeEncoder, TypeNode, RefType, SourceType
+from data_structures import SourceNode, Edge, CustomEncoder, TypeNode, RefType, CodeNode
 from src_analyzer import src_proc
 
 nodes_file = os.path.join(os.path.dirname(__file__), "classes.txt")
@@ -96,32 +96,30 @@ def source_proc(root_dir):
 
 def write_nodes(nodes):
     with open(nodes_file, "w") as fd:
-        for fn, ns in nodes.items():
-            for node in ns:
-                json.dump(node, fd, cls=NodeEncoder)
-                fd.write('\n')
+        for node in nodes:
+            json.dump(node, fd, cls=CustomEncoder)
+            fd.write('\n')
 
 
 def write_edges(edges):
     with open(edges_file, "w") as fd:
         for edge in edges:
-            json.dump(edge, fd, cls=EdgeEncoder)
+            json.dump(edge, fd, cls=CustomEncoder)
+            fd.write('\n')
 
 
-def symbol_search_cpp(code, types: Set[TypeNode]) -> Dict[TypeNode, RefType]:
-    """
-    returns dictionary {TypeNode: RefType}
-    """
+def symbol_search(code: CodeNode, types: Set[TypeNode]) -> Dict[TypeNode, RefType]:
     deps = dict()
-    for t in types:
-        pass
-    return deps
+    if code.inheritance_declare:
+        for t in types:
+            if code.inheritance_declare.find(t.name):
+                deps[t] = RefType.INHERITANCE
 
+    if code.class_body:
+        for t in types:
+            if code.class_body.find(t.name):
+                deps[t] = RefType.COMPOSITION
 
-def symbol_search_h(code, types: Set[TypeNode]) -> Dict[TypeNode, RefType]:
-    deps = dict()
-    for t in types:
-        pass
     return deps
 
 
@@ -134,22 +132,22 @@ def dep_analysis(folder):
         return included_types
 
     includes, declares = source_proc(folder)
+    nodes = {k for v in declares.values() for k in v.keys()}
     edges = set()
     for src, types in declares.items():
         included_types = get_included_types(src)
         for t, code in types.items():
             # for each declared type t, search code for dependencies in included_types
-            deps = symbol_search_cpp(code, included_types) if src.sourceType == SourceType.CPP else symbol_search_h(code, included_types)
+            deps = symbol_search(code, included_types)
             for d, refType in deps.items():
                 edges.add(Edge(t, d, refType))
-    write_nodes(declares)
-    return {k for v in declares.values() for k in v.keys()}, edges
+    return nodes, edges
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('folder', help='Path to the folder to scan')
     args = parser.parse_args()
-    includes, declares = source_proc(args.folder)
     nodes, edges = dep_analysis(args.folder)
-    write_nodes(declares)
+    write_nodes(nodes)
+    write_edges(edges)

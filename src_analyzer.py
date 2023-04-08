@@ -1,14 +1,10 @@
 import codecs
-import json
 import os
 import queue
 import re
 import sys
-import threading
 
-from graphviz import Digraph
-
-from data_structures import SourceNode, Edge, NodeEncoder, EdgeEncoder, TypeClassifier, SourceType, TypeNode, CodeNode
+from data_structures import SourceNode, TypeClassifier, SourceType, TypeNode, CodeNode
 
 nodes_file = os.path.join(os.path.dirname(__file__), "classes.txt")
 edges_file = os.path.join(os.path.dirname(__file__), "class-dependencies.txt")

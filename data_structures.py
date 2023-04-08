@@ -96,41 +96,27 @@ class CodeNode:
         return self.class_body
 
 
-class NodeEncoder(json.JSONEncoder):
+class CustomEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, TypeNode):
             return {"name": obj.name, "classifier": obj.classifier.name, "sourceName": obj.sourceName, "sourceType": obj.sourceType.name}
+        if isinstance(obj, Edge):
+            caller = json.loads(json.dumps(obj.caller, cls=CustomEncoder))
+            callee = json.loads(json.dumps(obj.callee, cls=CustomEncoder))
+            return {"caller": caller, "callee": callee, "refType": obj.refType.name}
+
         return json.JSONEncoder.default(self, obj)
 
 
-class NodeDecoder(json.JSONDecoder):
+class CustomDecoder(json.JSONDecoder):
     def __init__(self, *args, **kwargs):
         json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
 
     def object_hook(self, dct):
         if 'name' in dct and 'classifier' in dct and 'sourceName' in dct and 'sourceType' in dct:
             return TypeNode(dct['name'], TypeClassifier[dct['classifier']], dct['sourceName'], SourceType[dct['sourceType']])
-        return dct
-
-
-class EdgeEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Edge):
-            caller = json.dumps(obj.caller, cls=NodeEncoder)
-            callee = json.dumps(obj.callee, cls=NodeEncoder)
-            return {"caller": caller, "callee": callee, "refType": obj.refType.name}
-        return json.JSONEncoder.default(self, obj)
-
-
-class EdgeDecoder(json.JSONDecoder):
-    def __init__(self, *args, **kwargs):
-        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
-
-    def object_hook(self, dct):
         if 'caller' in dct and 'callee' in dct and 'refType' in dct:
-            caller = json.loads(dct['caller'], cls=NodeDecoder)
-            callee = json.loads(dct['callee'], cls=NodeDecoder)
-            return Edge(caller, callee, RefType[dct['refType']])
+            return Edge(dct['caller'], dct['callee'], RefType[dct['refType']])
         return dct
 
 
@@ -166,12 +152,12 @@ if __name__ == '__main__':
     print(src)
 
     abc = TypeNode('abc', TypeClassifier.ENUM, 'foo', SourceType.HEADER)
-    abc_json = json.dumps(abc, cls=NodeEncoder)
-    resurrected_abc = json.loads(abc_json, cls=NodeDecoder)
+    abc_json = json.dumps(abc, cls=CustomEncoder)
+    resurrected_abc = json.loads(abc_json, cls=CustomDecoder)
     print(f'original: {abc}\njson: {abc_json}\nresurrected: {resurrected_abc}')
 
     foo = TypeNode('Foo', TypeClassifier.CLASS, 'bar', SourceType.CPP)
     edge = Edge(foo, abc, RefType.COMPOSITION)
-    edge_json = json.dumps(edge, cls=EdgeEncoder)
-    resurrected_edge = json.loads(edge_json, cls=EdgeDecoder)
+    edge_json = json.dumps(edge, cls=CustomEncoder)
+    resurrected_edge = json.loads(edge_json, cls=CustomDecoder)
     print(f'original: {edge}\njson: {edge_json}\n resurrected: {resurrected_edge}')
