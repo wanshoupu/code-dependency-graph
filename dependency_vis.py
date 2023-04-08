@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import plotly.graph_objects as go
 
-from data_structures import TypeDependencyDecoder
+from data_structures import TypeDependencyDecoder, SourceType, RefType, TypeClassifier
 
 node_file = os.path.join(os.path.dirname(__file__), "types.txt")
 edge_file = os.path.join(os.path.dirname(__file__), "type-dependencies.txt")
@@ -14,36 +14,72 @@ class_dependency_graph_pdf = os.path.join(os.path.dirname(edge_file),
                                           os.path.basename(edge_file) + ".pdf")
 
 
-def compute_weight(graph, node_scale=3000, edge_scale=10, smallest_font=6, biggest_font=10):
-    edge_weights = [data['weight'] for (_, _, data) in graph.edges(data=True)]
-    biggest = max(edge_weights)
-    edge_sizes = [edge_scale * w / biggest for w in edge_weights]
-    if edge_sizes.count(max(edge_sizes)) >= len(edge_sizes) // 2:
-        edge_sizes = [e / edge_scale for e in edge_sizes]
-    node_weight_map = defaultdict(int)
-    for n1, n2, data in graph.edges(data=True):
-        node_weight_map[n1] += 1
-        node_weight_map[n2] += data['weight']
+class NodeProperty:
+    def __init__(self, node, size=1, color='blue', shape='circle', label=None) -> None:
+        self.node = node
+        self.size = size
+        self.color = color
+        self.shape = shape
+        self.label = label
 
-    node_weights = [node_weight_map[n] for n in graph.nodes()]
+
+class EdgeProperty:
+    def __init__(self, color='blue', style='-') -> None:
+        self.width = 1
+        self.color = color
+        # styles '-', '->', '-[', '-|>', '<-', '<->', '<|-', '<|-|>', ']-', ']-[', 'fancy', 'simple', 'wedge', '|-|'
+        self.style = style
+
+
+def get_style(data):
+    return '->' if data == RefType.INHERITANCE else '-'
+
+
+def get_shape(node):
+    if node.classifier == TypeClassifier.CLASS:
+        return 'o'
+    if node.classifier == TypeClassifier.ENUM:
+        return '*'
+    if node.classifier == TypeClassifier.STRUCT:
+        return 's'
+
+
+def get_color(node):
+    return 'red' if node.sourceType == SourceType.CPP else 'blue'
+
+
+def compute_edge_properties(graph):
+    edge_weights = [EdgeProperty(color=get_color(caller),
+                                 style=get_style(data)) for (caller, _, data) in graph.edges(data=True)]
+    return edge_weights
+
+
+def compute_node_properties(graph, node_scale=3000, smallest_font=6, biggest_font=10):
+    node_weight_map = defaultdict(int)
+    for _, n2, _ in graph.edges(data=True):
+        node_weight_map[n2] += 1
+
+    node_weights = [node_weight_map[n] for n in graph]
     biggest = max(node_weights)
     smallest = min(node_weights)
-    node_sizes = [node_scale * w / biggest for w in node_weights]
+    node_sizes = [node_scale * w // biggest for w in node_weights]
     label_fonts = [smallest_font + biggest_font * (f - smallest) // biggest for f in node_weights]
-
-    return node_sizes, edge_sizes, dict(zip([n for n in graph.nodes()], label_fonts))
+    tuples = zip(list(graph), node_sizes, label_fonts)
+    return [NodeProperty(n, size=s, color=get_color(n), shape=get_shape(n), label=l) for n, s, l in tuples]
 
 
 def diplot(graph):
     plt.figure(figsize=(15, 10))
     # possible styles '-','->','-[','-|>','<-','<->','<|-','<|-|>',']-',']-[','fancy','simple','wedge',
     #               '|-|'
-    node_sizes, edge_sizes, label_font_map = compute_weight(graph)
+    nodeProperties = compute_node_properties(graph)
+    edge_properties = compute_edge_properties(graph)
     seeds = [13, 0, 0x1b9a]
     pos = nx.spring_layout(graph, seed=seeds[0])
-    nx.draw_networkx_nodes(graph, node_color='green', node_size=node_sizes, pos=pos)
-    nx.draw_networkx_edges(graph, width=edge_sizes, arrowstyle='->', pos=pos)
+    nx.draw_networkx_nodes(graph, node_shape='o', node_color=[n.color for n in nodeProperties], node_size=[n.size for n in nodeProperties], pos=pos)
+    nx.draw_networkx_edges(graph, width=[p.width for p in edge_properties], arrowstyle='->', pos=pos)
     # nx.draw_networkx_labels(graph, pos=pos, font_size=label_sizes)
+    label_font_map = {n.node: n.label for n in nodeProperties}
     for node, (x, y) in pos.items():
         plt.text(x, y, node, fontsize=label_font_map[node], ha='center', va='center')
 
@@ -65,18 +101,20 @@ def gplot(edge_trace, node_trace):
                      )
 
 
-def load_data():
+def load_edges():
+    edges = set()
     with open(edge_file, 'r') as fd:
         for line in fd.readlines():
-            json.loads(line, cls=TypeDependencyDecoder)
-        return # TODO
+            edge = json.loads(line, cls=TypeDependencyDecoder)
+            edges.add(edge)
+    return edges
 
 
 def create_graph():
-    nodes, edges = load_data()
     # Reading the file. "DiGraph" is telling to reading the data with node-node. "nodetype" will identify whether the node is number or string or any other type.
-    graph = nx.read_edgelist(edge_file, create_using=nx.DiGraph(),
-                             nodetype=str)
+    graph = nx.DiGraph()
+    for e in load_edges():
+        graph.add_edge(e.caller, e.callee, type=e.refType)
     pos = nx.spring_layout(graph, seed=1290)
     # number of self-nodes
     for n, p in pos.items():
