@@ -10,8 +10,8 @@ from typing import Dict, Set
 from data_structures import SourceNode, Edge, CustomEncoder, TypeNode, RefType, CodeNode
 from src_analyzer import src_proc
 
-nodes_file = os.path.join(os.path.dirname(__file__), "classes.txt")
-edges_file = os.path.join(os.path.dirname(__file__), "class-dependencies.txt")
+nodes_file = os.path.join(os.path.dirname(__file__), "types.txt")
+edges_file = os.path.join(os.path.dirname(__file__), "type-dependencies.txt")
 
 max_queue_size = 7
 assembly_line = queue.Queue(max_queue_size)

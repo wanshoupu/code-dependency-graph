@@ -6,9 +6,6 @@ import sys
 
 from data_structures import SourceNode, TypeClassifier, SourceType, TypeNode, CodeNode
 
-nodes_file = os.path.join(os.path.dirname(__file__), "classes.txt")
-edges_file = os.path.join(os.path.dirname(__file__), "class-dependencies.txt")
-
 max_queue_size = 7
 assembly_line = queue.Queue(max_queue_size)
 
