@@ -6,7 +6,7 @@ import queue
 import re
 import threading
 
-from data_structures import Node, Edge, NodeEncoder, EdgeEncoder
+from data_structures import SourceNode, Edge, NodeEncoder, EdgeEncoder
 from src_analyzer import src_proc
 
 nodes_file = os.path.join(os.path.dirname(__file__), "classes.txt")
@@ -74,7 +74,7 @@ def source_proc(root_dir):
             if ns:
                 declares[src_name] = ns
             if icls:
-                includes[src_name] = icls
+                includes[SourceNode(src_name)] = icls
             print(f'Finished {src_file}')
             assembly_line.task_done()
 
@@ -107,11 +107,18 @@ def write_edges(edges):
             json.dump(edge, fd, cls=EdgeEncoder)
 
 
+def dep_analysis(folder):
+    includes, declares = source_proc(folder)
+    write_nodes(declares)
+
+    print(includes)
+    return {}, {}
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('folder', help='Path to the folder to scan')
     args = parser.parse_args()
     includes, declares = source_proc(args.folder)
+    nodes, edges = dep_analysis(args.folder)
     write_nodes(declares)
-    print(includes)
-    print(declares)

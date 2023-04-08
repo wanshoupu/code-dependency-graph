@@ -8,7 +8,7 @@ import threading
 
 from graphviz import Digraph
 
-from data_structures import Node, Edge, NodeEncoder, EdgeEncoder, TypeClassifier, SourceType
+from data_structures import SourceNode, Edge, NodeEncoder, EdgeEncoder, TypeClassifier, SourceType, TypeNode
 
 nodes_file = os.path.join(os.path.dirname(__file__), "classes.txt")
 edges_file = os.path.join(os.path.dirname(__file__), "class-dependencies.txt")
@@ -50,7 +50,7 @@ def search_type_declares(code, src_file):
             if classifier is None:
                 print(f'Block "{block}" do not have a proper TypeClassifier', file=sys.stderr)
 
-            result[Node(n, classifier, sourceName, sourceType)] = declare_blocks[i + 1]
+            result[TypeNode(n, classifier, sourceName, sourceType)] = declare_blocks[i + 1]
     return result
 
 
@@ -72,7 +72,12 @@ def src_proc(src_file):
         code_lines = [l.strip() for l in fd.readlines() if not l.strip().startswith('//') and l.strip()]
         code = '\n'.join(code_lines)
         nodes = search_type_declares(code, src_file)
-        includes = set(os.path.basename(include) for include in include_regex.findall(code))
+        includes = set()
+        for header in include_regex.findall(code):
+            hf = os.path.basename(header)
+            src, ext = os.path.splitext(hf)
+            if ext:
+                includes.add(SourceNode(hf))
         return nodes, includes
 
 

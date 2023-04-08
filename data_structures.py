@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from enum import Enum
 
@@ -32,7 +33,7 @@ class TypeClassifier(Enum):
                 return item
 
 
-class Node:
+class TypeNode:
     def __init__(self, name, classifier: TypeClassifier, sourceName, sourceType: SourceType) -> None:
         # class name
         self.name = name
@@ -46,7 +47,7 @@ class Node:
         return hash(self.name) ^ hash(self.sourceType) ^ hash(self.sourceName) ^ hash(self.classifier)
 
     def __eq__(self, other):
-        if not isinstance(other, Node):
+        if not isinstance(other, TypeNode):
             return False
 
         return (self.name == other.name
@@ -58,9 +59,27 @@ class Node:
         return self.name
 
 
+class SourceNode:
+    def __init__(self, srcFile) -> None:
+        self.sourceName, self.sourceType = os.path.splitext(srcFile)
+
+    def __hash__(self) -> int:
+        return hash(self.sourceType) ^ hash(self.sourceName)
+
+    def __eq__(self, other):
+        if not isinstance(other, SourceNode):
+            return False
+
+        return (self.sourceType == other.sourceType
+                and self.sourceName == other.sourceName)
+
+    def __repr__(self) -> str:
+        return self.sourceName
+
+
 class NodeEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, Node):
+        if isinstance(obj, TypeNode):
             return {"name": obj.name, "classifier": obj.classifier.name, "sourceName": obj.sourceName, "sourceType": obj.sourceType.name}
         return json.JSONEncoder.default(self, obj)
 
@@ -71,7 +90,7 @@ class NodeDecoder(json.JSONDecoder):
 
     def object_hook(self, dct):
         if 'name' in dct and 'classifier' in dct and 'sourceName' in dct and 'sourceType' in dct:
-            return Node(dct['name'], TypeClassifier[dct['classifier']], dct['sourceName'], SourceType[dct['sourceType']])
+            return TypeNode(dct['name'], TypeClassifier[dct['classifier']], dct['sourceName'], SourceType[dct['sourceType']])
         return dct
 
 
@@ -97,7 +116,7 @@ class EdgeDecoder(json.JSONDecoder):
 
 
 class Edge:
-    def __init__(self, caller: Node, callee: Node, refType: RefType) -> None:
+    def __init__(self, caller: TypeNode, callee: TypeNode, refType: RefType) -> None:
         self.callee = callee
         self.caller = caller
         self.refType = refType
@@ -106,7 +125,7 @@ class Edge:
         return hash(self.caller) ^ hash(self.callee) ^ hash(self.refType)
 
     def __eq__(self, other):
-        if not isinstance(other, Node):
+        if not isinstance(other, TypeNode):
             return False
 
         return (self.caller == other.sourceName
@@ -124,12 +143,15 @@ if __name__ == '__main__':
     print(tc)
     st = SourceType.parseval('.c++')
     print(st)
-    abc = Node('abc', TypeClassifier.ENUM, 'foo', SourceType.HEADER)
+    src = SourceNode('foo.h')
+    print(src)
+
+    abc = TypeNode('abc', TypeClassifier.ENUM, 'foo', SourceType.HEADER)
     abc_json = json.dumps(abc, cls=NodeEncoder)
     resurrected_abc = json.loads(abc_json, cls=NodeDecoder)
     print(f'original: {abc}\njson: {abc_json}\nresurrected: {resurrected_abc}')
 
-    foo = Node('Foo', TypeClassifier.CLASS, 'bar', SourceType.CPP)
+    foo = TypeNode('Foo', TypeClassifier.CLASS, 'bar', SourceType.CPP)
     edge = Edge(foo, abc, RefType.COMPOSITION)
     edge_json = json.dumps(edge, cls=EdgeEncoder)
     resurrected_edge = json.loads(edge_json, cls=EdgeDecoder)
