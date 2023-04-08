@@ -77,6 +77,25 @@ class SourceNode:
         return self.sourceName
 
 
+class CodeNode:
+    def __init__(self, class_body=None, inheritance_declare=None) -> None:
+        self.class_body = class_body
+        self.inheritance_declare = inheritance_declare
+
+    def __hash__(self) -> int:
+        return hash(self.class_body) ^ hash(self.inheritance_declare)
+
+    def __eq__(self, other):
+        if not isinstance(other, CodeNode):
+            return False
+
+        return (self.class_body == other.class_body
+                and self.inheritance_declare == other.inheritance_declare)
+
+    def __repr__(self) -> str:
+        return self.class_body
+
+
 class NodeEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, TypeNode):

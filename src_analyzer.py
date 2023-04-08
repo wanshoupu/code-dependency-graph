@@ -8,7 +8,7 @@ import threading
 
 from graphviz import Digraph
 
-from data_structures import SourceNode, Edge, NodeEncoder, EdgeEncoder, TypeClassifier, SourceType, TypeNode
+from data_structures import SourceNode, Edge, NodeEncoder, EdgeEncoder, TypeClassifier, SourceType, TypeNode, CodeNode
 
 nodes_file = os.path.join(os.path.dirname(__file__), "classes.txt")
 edges_file = os.path.join(os.path.dirname(__file__), "class-dependencies.txt")
@@ -50,16 +50,31 @@ def search_type_declares(code, src_file):
             if classifier is None:
                 print(f'Block "{block}" do not have a proper TypeClassifier', file=sys.stderr)
 
-            result[TypeNode(n, classifier, sourceName, sourceType)] = declare_blocks[i + 1]
+            typeNode = TypeNode(n, classifier, sourceName, sourceType)
+            classBody = parse_class_body(typeNode, declare_blocks[i + 1])
+            if classBody:
+                result[typeNode] = classBody
     return result
 
 
-def matching_brackets():
-    text = "(This is a (sampletext with (parentheses)) text with (parentheses))"
-    pattern = r"\((.*?)\)"
-
-    matches = re.findall(pattern, text)
-    print(matches)
+def parse_class_body(typeNode: TypeNode, code):
+    # eliminate forward declaration
+    first_statement = code.find(';')
+    class_start = code.find('{')
+    if class_start == -1 or first_statement < class_start:
+        return None
+    inheritance_declare = code[:class_start].strip()
+    bracket_balance = 0
+    class_end = class_start
+    for i, c in enumerate(code[class_start:]):
+        if c == '{':
+            bracket_balance += 1
+        elif c == '}':
+            bracket_balance -= 1
+        if bracket_balance == 0:
+            class_end = i
+            break
+    return CodeNode(class_body=code[class_start:class_end + 1], inheritance_declare=inheritance_declare or None)
 
 
 def src_proc(src_file):
