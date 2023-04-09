@@ -92,17 +92,17 @@ def create_graphviz():
         if classifier == TypeClassifier.CLASS:
             return 'circle'
         if classifier == TypeClassifier.ENUM:
-            return 'square'
+            return 'rectangle'
         if classifier == TypeClassifier.STRUCT:
-            return 'triangle'
+            return 'hexagon'
 
     """ Create a graph from a folder. """
     # Find nodes and clusters
-    graph = vis.Digraph(graph_attr={'layout': 'sfdp', 'seed': '1234', 'outputorder': 'edgesfirst'})
+    graph = vis.Digraph(graph_attr={'layout': 'sfdp', 'seed': '1234', 'outputorder': 'edgelast'})
     graph.graph_attr['layout'] = 'sfdp'
     # Find edges and create clusters
     nodes, edges = load_data()
-    nodeProperties, edge_properties = vis_properties(edges, node_scale=1)
+    nodeProperties, edge_properties = vis_properties(edges, node_scale=1, smallest_font=20, biggest_font=50)
     for (caller, callee), p in edge_properties.items():
         graph.edge(caller.name, callee.name, color=p.color, **get_style(p.edge.refType))
     for n, p in nodeProperties.items():
@@ -123,7 +123,7 @@ def create_nx_graph():
         if classifier == TypeClassifier.ENUM:
             return 's'
         if classifier == TypeClassifier.STRUCT:
-            return '^'
+            return 'h'
 
     plt.figure(figsize=(15, 10))
     # possible styles '-','->','-[','-|>','<-','<->','<|-','<|-|>',']-',']-[','fancy','simple','wedge',
