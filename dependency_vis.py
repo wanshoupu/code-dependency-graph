@@ -85,8 +85,8 @@ def load_data():
 def create_graphviz():
     def get_style(reftype):
         if reftype == RefType.COMPOSITION:
-            return {'arrowhead': 'dot', 'dir': 'forward'}
-        return {'arrowhead': 'vee', 'dir': 'back'}
+            return {'arrowhead': 'dot', 'dir': 'back'}
+        return {'arrowhead': 'vee', 'dir': 'forward'}
 
     def get_shape(classifier):
         if classifier == TypeClassifier.CLASS:
