@@ -5,7 +5,7 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import networkx as nx
 import plotly.graph_objects as go
-from graphviz import Digraph
+import graphviz as vis
 
 from data_structures import TypeDependencyDecoder, SourceType, RefType, TypeClassifier
 
@@ -18,38 +18,19 @@ nx_graph_file = os.path.join(os.path.dirname(edge_file),
 
 
 class NodeProperty:
-    def __init__(self, node, size=1, color='blue', shape='circle', label=None) -> None:
+    def __init__(self, node, size=1, color='blue', label=None) -> None:
         self.node = node
         self.size = size
         self.color = color
-        self.shape = shape
         self.label = label
 
 
 class EdgeProperty:
-    def __init__(self, edge, color='blue', style='-') -> None:
+    def __init__(self, edge, color='blue') -> None:
         self.edge = edge
         self.width = 1
         self.color = color
         # styles '-', '->', '-[', '-|>', '<-', '<->', '<|-', '<|-|>', ']-', ']-[', 'fancy', 'simple', 'wedge', '|-|'
-        self.style = style
-
-
-def get_style(data):
-    if data == RefType.INHERITANCE:
-        return 'vee'
-    if data == RefType.COMPOSITION:
-        return 'dot'
-    return 'vee'
-
-
-def get_shape(node):
-    if node.classifier == TypeClassifier.CLASS:
-        return 'o'
-    if node.classifier == TypeClassifier.ENUM:
-        return '*'
-    if node.classifier == TypeClassifier.STRUCT:
-        return 's'
 
 
 def get_color(node):
@@ -69,9 +50,8 @@ def vis_properties(edges, node_scale=3000, smallest_font=1, biggest_font=10):
     for n, v in node_weight_map.items():
         node_sizes[n] = v * node_scale // biggest
         label_fonts[n] = smallest_font + biggest_font * (v - smallest) // biggest
-    edge_weights = [EdgeProperty(e, color=get_color(e.caller), style=get_style(e.refType)) for e in edges]
-
-    node_properties = [NodeProperty(n, size=node_sizes[n], color=get_color(n), shape=get_shape(n), label=label_fonts[n]) for n in node_weight_map]
+    edge_weights = {(e.caller, e.callee): EdgeProperty(e, color=get_color(e.caller)) for e in edges}
+    node_properties = {n: NodeProperty(n, size=node_sizes[n], color=get_color(n), label=label_fonts[n]) for n in node_weight_map}
     return node_properties, edge_weights
 
 
@@ -103,22 +83,48 @@ def load_data():
 
 
 def create_graphviz():
+    def get_style(reftype):
+        if reftype == RefType.COMPOSITION:
+            return {'arrowhead': 'dot', 'dir': 'forward'}
+        return {'arrowhead': 'vee', 'dir': 'back'}
+
+    def get_shape(classifier):
+        if classifier == TypeClassifier.CLASS:
+            return 'circle'
+        if classifier == TypeClassifier.ENUM:
+            return 'square'
+        if classifier == TypeClassifier.STRUCT:
+            return 'triangle'
+
     """ Create a graph from a folder. """
     # Find nodes and clusters
-    graph = Digraph(graph_attr={'layout': 'sfdp', 'seed': '1234', 'outputorder': 'edgesfirst'})
+    graph = vis.Digraph(graph_attr={'layout': 'sfdp', 'seed': '1234', 'outputorder': 'edgesfirst'})
     graph.graph_attr['layout'] = 'sfdp'
     # Find edges and create clusters
     nodes, edges = load_data()
     nodeProperties, edge_properties = vis_properties(edges, node_scale=1)
-    for ep in edge_properties:
-        graph.edge(ep.edge.caller.name, ep.edge.callee.name, color=ep.color, arrowhead=ep.style, dir='back' if ep.style == 'dot' else 'forward')
-    for np in nodeProperties:
-        graph.node(np.node.name, fontsize=str(np.label), width=str(np.size), height=str(np.size))
+    for (caller, callee), p in edge_properties.items():
+        graph.edge(caller.name, callee.name, color=p.color, **get_style(p.edge.refType))
+    for n, p in nodeProperties.items():
+        graph.node(n.name, fontsize=str(p.label), width=str(p.size), height=str(p.size), shape=get_shape(n.classifier))
     graph.render(graphvis_file, cleanup=True, format='pdf')
     print(f'create_nx_graph saved graph to {graphvis_file}')
 
 
 def create_nx_graph():
+    def get_style(data):
+        if data == RefType.COMPOSITION:
+            return ']-'
+        return '->'
+
+    def get_shape(classifier):
+        if classifier == TypeClassifier.CLASS:
+            return 'o'
+        if classifier == TypeClassifier.ENUM:
+            return 's'
+        if classifier == TypeClassifier.STRUCT:
+            return '^'
+
     plt.figure(figsize=(15, 10))
     # possible styles '-','->','-[','-|>','<-','<->','<|-','<|-|>',']-',']-[','fancy','simple','wedge',
     #               '|-|'
@@ -129,10 +135,12 @@ def create_nx_graph():
     for e in edges:
         graph.add_edge(e.caller, e.callee, type=e.refType)
     pos = nx.random_layout(graph, seed=seeds[0])
-    nx.draw_networkx_nodes(graph, node_shape='o', node_color=[n.color for n in nodeProperties], node_size=[n.size for n in nodeProperties], pos=pos)
-    nx.draw_networkx_edges(graph, width=[p.width for p in edge_properties], arrowstyle='->', pos=pos)
-    # nx.draw_networkx_labels(graph, pos=pos, font_size=label_sizes)
-    label_font_map = {n.node: n.label for n in nodeProperties}
+
+    for node in graph.nodes():
+        nx.draw_networkx_nodes(graph, pos, nodelist=[node], node_shape=get_shape(node.classifier), node_color='red' if node.sourceType == SourceType.CPP else 'blue')
+    for e in graph.edges():
+        nx.draw_networkx_edges(graph, edgelist=[e], arrowstyle=get_style(edge_properties[e].edge.refType), pos=pos)
+    label_font_map = {n: p.label for n, p in nodeProperties.items()}
     for node, (x, y) in pos.items():
         plt.text(x, y, node, fontsize=label_font_map[node], ha='center', va='center')
     plt.savefig(nx_graph_file)
@@ -152,5 +160,4 @@ Quick start
 """
 if __name__ == "__main__":
     create_graphviz()
-
     create_nx_graph()
