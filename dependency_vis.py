@@ -5,13 +5,14 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import networkx as nx
 import plotly.graph_objects as go
+from graphviz import Digraph
 
 from data_structures import TypeDependencyDecoder, SourceType, RefType, TypeClassifier
 
 node_file = os.path.join(os.path.dirname(__file__), "types.txt")
 edge_file = os.path.join(os.path.dirname(__file__), "type-dependencies.txt")
 graphvis_file = os.path.join(os.path.dirname(edge_file),
-                             os.path.basename(edge_file) + ".graphvis.pdf")
+                             os.path.basename(edge_file) + ".graphvis")
 nx_graph_file = os.path.join(os.path.dirname(edge_file),
                              os.path.basename(edge_file) + ".nxgraph.pdf")
 
@@ -55,7 +56,7 @@ def get_color(node):
     return 'red' if node.sourceType == SourceType.CPP else 'blue'
 
 
-def vis_properties(edges, node_scale=3000, smallest_font=6, biggest_font=10):
+def vis_properties(edges, node_scale=3000, smallest_font=1, biggest_font=10):
     node_weight_map = defaultdict(int)
     for e in edges:
         node_weight_map[e.caller] += 1
@@ -104,15 +105,16 @@ def load_data():
 def create_graphviz():
     """ Create a graph from a folder. """
     # Find nodes and clusters
-    from graphviz import Digraph
-    graph = Digraph()
+    graph = Digraph(graph_attr={'layout': 'sfdp', 'seed': '1234', 'outputorder': 'edgesfirst'})
+    graph.graph_attr['layout'] = 'sfdp'
     # Find edges and create clusters
     nodes, edges = load_data()
-    nodeProperties, edge_properties = vis_properties(edges)
+    nodeProperties, edge_properties = vis_properties(edges, node_scale=1)
     for ep in edge_properties:
         graph.edge(ep.edge.caller.name, ep.edge.callee.name, color=ep.color, arrowhead=ep.style, dir='back' if ep.style == 'dot' else 'forward')
-    graph.graph_attr['layout'] = 'sfdp'
-    graph.render(graphvis_file, cleanup=False, format='pdf')
+    for np in nodeProperties:
+        graph.node(np.node.name, fontsize=str(np.label), width=str(np.size), height=str(np.size))
+    graph.render(graphvis_file, cleanup=True, format='pdf')
     print(f'create_nx_graph saved graph to {graphvis_file}')
 
 
@@ -126,7 +128,7 @@ def create_nx_graph():
     graph = nx.DiGraph()
     for e in edges:
         graph.add_edge(e.caller, e.callee, type=e.refType)
-    pos = nx.spring_layout(graph, seed=seeds[0])
+    pos = nx.random_layout(graph, seed=seeds[0])
     nx.draw_networkx_nodes(graph, node_shape='o', node_color=[n.color for n in nodeProperties], node_size=[n.size for n in nodeProperties], pos=pos)
     nx.draw_networkx_edges(graph, width=[p.width for p in edge_properties], arrowstyle='->', pos=pos)
     # nx.draw_networkx_labels(graph, pos=pos, font_size=label_sizes)
