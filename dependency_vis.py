@@ -24,7 +24,8 @@ class NodeProperty:
 
 
 class EdgeProperty:
-    def __init__(self, color='blue', style='-') -> None:
+    def __init__(self, edge, color='blue', style='-') -> None:
+        self.edge = edge
         self.width = 1
         self.color = color
         # styles '-', '->', '-[', '-|>', '<-', '<->', '<|-', '<|-|>', ']-', ']-[', 'fancy', 'simple', 'wedge', '|-|'
@@ -32,7 +33,11 @@ class EdgeProperty:
 
 
 def get_style(data):
-    return '->' if data == RefType.INHERITANCE else '-'
+    if data == RefType.INHERITANCE:
+        return 'vee'
+    if data == RefType.COMPOSITION:
+        return 'dot'
+    return 'vee'
 
 
 def get_shape(node):
@@ -48,32 +53,30 @@ def get_color(node):
     return 'red' if node.sourceType == SourceType.CPP else 'blue'
 
 
-def compute_edge_properties(graph):
-    edge_weights = [EdgeProperty(color=get_color(caller),
-                                 style=get_style(data)) for (caller, _, data) in graph.edges(data=True)]
-    return edge_weights
-
-
-def compute_node_properties(graph, node_scale=3000, smallest_font=6, biggest_font=10):
+def vis_properties(edges, node_scale=3000, smallest_font=6, biggest_font=10):
     node_weight_map = defaultdict(int)
-    for _, n2, _ in graph.edges(data=True):
-        node_weight_map[n2] += 1
+    for e in edges:
+        node_weight_map[e.caller] += 1
+        node_weight_map[e.callee] += 1
 
-    node_weights = [node_weight_map[n] for n in graph]
-    biggest = max(node_weights)
-    smallest = min(node_weights)
-    node_sizes = [node_scale * w // biggest for w in node_weights]
-    label_fonts = [smallest_font + biggest_font * (f - smallest) // biggest for f in node_weights]
-    tuples = zip(list(graph), node_sizes, label_fonts)
-    return [NodeProperty(n, size=s, color=get_color(n), shape=get_shape(n), label=l) for n, s, l in tuples]
+    biggest = max(node_weight_map.values())
+    smallest = min(node_weight_map.values())
+    node_sizes = dict()
+    label_fonts = dict()
+    for n, v in node_weight_map.items():
+        node_sizes[n] = v * node_scale // biggest
+        label_fonts[n] = smallest_font + biggest_font * (v - smallest) // biggest
+    edge_weights = [EdgeProperty(e, color=get_color(e.caller), style=get_style(e.refType)) for e in edges]
+
+    node_properties = [NodeProperty(n, size=node_sizes[n], color=get_color(n), shape=get_shape(n), label=label_fonts[n]) for n in node_weight_map]
+    return node_properties, edge_weights
 
 
 def diplot(graph):
     plt.figure(figsize=(15, 10))
     # possible styles '-','->','-[','-|>','<-','<->','<|-','<|-|>',']-',']-[','fancy','simple','wedge',
     #               '|-|'
-    nodeProperties = compute_node_properties(graph)
-    edge_properties = compute_edge_properties(graph)
+    nodeProperties, edge_properties = vis_properties(graph)
     seeds = [13, 0, 0x1b9a]
     pos = nx.spring_layout(graph, seed=seeds[0])
     nx.draw_networkx_nodes(graph, node_shape='o', node_color=[n.color for n in nodeProperties], node_size=[n.size for n in nodeProperties], pos=pos)
@@ -101,19 +104,35 @@ def gplot(edge_trace, node_trace):
                      )
 
 
-def load_edges():
+def load_data():
     edges = set()
     with open(edge_file, 'r') as fd:
         for line in fd.readlines():
             edge = json.loads(line, cls=TypeDependencyDecoder)
             edges.add(edge)
-    return edges
+    nodes = set(c.caller for c in edges) | set(c.callee for c in edges)
+    return nodes, edges
 
 
-def create_graph():
+def create_graphviz():
+    """ Create a graph from a folder. """
+    # Find nodes and clusters
+    from graphviz import Digraph
+    graph = Digraph()
+    # Find edges and create clusters
+    nodes, edges = load_data()
+    nodeProperties, edge_properties = vis_properties(edges)
+    for ep in edge_properties:
+        graph.edge(ep.edge.caller.name, ep.edge.callee.name, color=ep.color, arrowhead=ep.style, dir='back' if ep.style == 'dot' else 'forward')
+
+    return graph
+
+
+def create_nx_graph():
     # Reading the file. "DiGraph" is telling to reading the data with node-node. "nodetype" will identify whether the node is number or string or any other type.
     graph = nx.DiGraph()
-    for e in load_edges():
+    nodes, edges = load_data()
+    for e in edges:
         graph.add_edge(e.caller, e.callee, type=e.refType)
     pos = nx.spring_layout(graph, seed=1290)
     # number of self-nodes
@@ -133,8 +152,10 @@ Quick start
 4. The result will be displayed on screen, also saved to file snapshot-data-serv-diagram.pdf
 """
 if __name__ == "__main__":
-    base_graph = create_graph()
+    base_graph = create_graphviz()
+    base_graph.graph_attr['layout'] = 'sfdp'
+    base_graph.render('bar', cleanup=False, format='jpg')
 
-    diplot(base_graph)
-    plt.savefig(class_dependency_graph_pdf)
-    plt.show()
+    # diplot(base_graph)
+    # plt.savefig(class_dependency_graph_pdf)
+    # plt.show()
