@@ -26,7 +26,7 @@ class NodeProperty:
 
 
 class EdgeProperty:
-    def __init__(self, edge, color='blue') -> None:
+    def __init__(self, edge, color='black') -> None:
         self.edge = edge
         self.width = 1
         self.color = color
@@ -34,7 +34,7 @@ class EdgeProperty:
 
 
 def get_color(node):
-    return 'red' if node.sourceType == SourceType.CPP else 'blue'
+    return 'red' if node.sourceType == SourceType.CPP else 'black'
 
 
 def vis_properties(edges, node_scale=3000, smallest_font=1, biggest_font=10):
@@ -105,14 +105,13 @@ def create_graphviz():
     """ Create a graph from a folder. """
     # Find nodes and clusters
     graph = vis.Digraph(graph_attr={'layout': 'sfdp', 'seed': '1234', 'outputorder': 'edgelast'})
-    graph.graph_attr['layout'] = 'sfdp'
     # Find edges and create clusters
     nodes, edges = load_data()
     nodeProperties, edge_properties = vis_properties(edges, node_scale=1, smallest_font=20, biggest_font=50)
     for (caller, callee), p in edge_properties.items():
         graph.edge(caller.name, callee.name, color=p.color, **get_style(p.edge.refType))
     for n, p in nodeProperties.items():
-        graph.node(n.name, fontsize=str(p.label), width=str(p.size), height=str(p.size), shape=get_shape(n.classifier), style='filled', fillcolor='lightblue:0.5')
+        graph.node(n.name, fontsize=str(p.label), width=str(p.size), height=str(p.size), shape=get_shape(n.classifier), style='filled', color="#0000ff80")
     graph.render(graphvis_file, cleanup=True, format='pdf')
     print(f'create_nx_graph saved graph to {graphvis_file}')
 
