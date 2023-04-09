@@ -90,8 +90,9 @@ def load_data():
 def create_graphviz():
     def get_style(reftype):
         if reftype == RefType.COMPOSITION:
-            return {'arrowhead': 'dot', 'dir': 'back'}
-        return {'arrowhead': 'vee', 'dir': 'forward'}
+            return {'arrowtail': 'dot', 'dir': 'back'}
+        if reftype == RefType.INHERITANCE:
+            return {'arrowhead': 'vee'}
 
     def get_shape(classifier):
         if classifier == TypeClassifier.CLASS:
@@ -111,7 +112,7 @@ def create_graphviz():
     for (caller, callee), p in edge_properties.items():
         graph.edge(caller.name, callee.name, color=p.color, **get_style(p.edge.refType))
     for n, p in nodeProperties.items():
-        graph.node(n.name, fontsize=str(p.label), width=str(p.size), height=str(p.size), shape=get_shape(n.classifier))
+        graph.node(n.name, fontsize=str(p.label), width=str(p.size), height=str(p.size), shape=get_shape(n.classifier), style='filled', fillcolor='lightblue:0.5')
     graph.render(graphvis_file, cleanup=True, format='pdf')
     print(f'create_nx_graph saved graph to {graphvis_file}')
 
@@ -165,4 +166,4 @@ Quick start
 """
 if __name__ == "__main__":
     create_graphviz()
-    create_nx_graph()
+    # create_nx_graph()

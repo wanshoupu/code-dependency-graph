@@ -31,6 +31,7 @@ def search_type_declares(code, src_file):
     if sourceType is None:
         print(f'Source file {src_file} do not have a valid extension', file=sys.stderr)
     result = dict()
+    # TODO bug: embedded class declaration or friend class will break to be fixed
     declare_blocks = re.split(declare_block_pattern, code)
     for i, block in enumerate(declare_blocks):
         declare = re.findall(type_declare_pattern, block)
@@ -58,16 +59,16 @@ def parse_class_body(typeNode: TypeNode, code):
         return None
     inheritance_declare = code[:class_start].strip()
     bracket_balance = 0
-    class_end = class_start
+    class_end = -1
     for i, c in enumerate(code[class_start:]):
         if c == '{':
             bracket_balance += 1
         elif c == '}':
             bracket_balance -= 1
         if bracket_balance == 0:
-            class_end = i
+            class_end = class_start + i + 1
             break
-    return CodeNode(class_body=code[class_start:class_end + 1], inheritance_declare=inheritance_declare or None)
+    return CodeNode(class_body=code[class_start:class_end], inheritance_declare=inheritance_declare or None)
 
 
 def strip(line):
@@ -83,19 +84,19 @@ def src_proc(src_file):
     """
     with codecs.open(src_file, 'r', "utf-8", "ignore") as fd:
         code_lines = [strip(l) for l in fd.readlines()]
-        code = '\n'.join(code_lines)
-        nodes = search_type_declares(code, src_file)
+        code = '\n'.join([l for l in code_lines if l])
         includes = set()
         for header in include_regex.findall(code):
             hf = os.path.basename(header)
             src, ext = os.path.splitext(hf)
             if ext:
                 includes.add(SourceNode(hf))
+        nodes = search_type_declares(code.replace('\n', ' '), src_file)
         return nodes, includes
 
 
 if __name__ == '__main__':
-    src_file = '/Users/swan/workspace/client/game-engine/Client/App/ads/include/ads/ServeAdResponse.h'
+    src_file = '/Users/swan/workspace/client/game-engine/Client/App/ads/include/ads/BackendAdsProvider.h'
     nodes, includes = src_proc(src_file)
     print(nodes)
     print(includes)

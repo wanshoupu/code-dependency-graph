@@ -46,6 +46,11 @@ def find_code_files(path, recursive=True):
     Return a list of all the files in the folder.
     If recursive is True, the function will search recursively.
     """
+    # return ['/Users/swan/workspace/client/game-engine/Client/App/ads/include/ads/AdInstanceInterface.h',
+    #         '/Users/swan/workspace/client/game-engine/Client/App/ads/include/ads/BackendAdsProvider.h',
+    #         '/Users/swan/workspace/client/game-engine/Client/App/ads/include/ads/AdsProviderInterface.h']
+    if os.path.exists(path) and os.path.isfile(path):
+        return [path]
     files = []
     for entry in os.scandir(path):
         if skip(entry):
@@ -57,20 +62,13 @@ def find_code_files(path, recursive=True):
     return files
 
 
-def find_neighbors(path):
-    """ Find all the other nodes included by the file targeted by path. """
-    f = codecs.open(path, 'r', "utf-8", "ignore")
-    code = f.read()
-    f.close()
-    return [normalize(include) for include in include_regex.findall(code)]
-
-
 def source_proc(root_dir):
     """
     return a tuple (includes, declares)
     includes: dict{src_file : set(includes)}
     declares: dict{src_file : dict{TypeNode : CodeNode}}
     """
+
     def worker():
         while True:
             src_file = assembly_line.get()
@@ -117,12 +115,12 @@ def symbol_search(code: CodeNode, types: Set[TypeNode]) -> Dict[TypeNode, RefTyp
     deps = dict()
     if code.inheritance_declare:
         for t in types:
-            if code.inheritance_declare.find(t.name):
+            if code.inheritance_declare.find(t.name) >= 0:
                 deps[t] = RefType.INHERITANCE
 
     if code.class_body:
         for t in types:
-            if code.class_body.find(t.name):
+            if code.class_body.find(t.name) >= 0:
                 deps[t] = RefType.COMPOSITION
 
     return deps
@@ -160,6 +158,7 @@ def verify_data(nodes, edges):
         assert caller in nodes, f'{caller} not found'
         assert callee in nodes, f'{callee} not found'
     print('Data verified and no anomaly found')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
