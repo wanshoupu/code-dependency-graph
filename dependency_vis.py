@@ -10,8 +10,10 @@ from data_structures import TypeDependencyDecoder, SourceType, RefType, TypeClas
 
 node_file = os.path.join(os.path.dirname(__file__), "types.txt")
 edge_file = os.path.join(os.path.dirname(__file__), "type-dependencies.txt")
-class_dependency_graph_pdf = os.path.join(os.path.dirname(edge_file),
-                                          os.path.basename(edge_file) + ".pdf")
+graphvis_file = os.path.join(os.path.dirname(edge_file),
+                             os.path.basename(edge_file) + ".graphvis.pdf")
+nx_graph_file = os.path.join(os.path.dirname(edge_file),
+                             os.path.basename(edge_file) + ".nxgraph.pdf")
 
 
 class NodeProperty:
@@ -72,21 +74,6 @@ def vis_properties(edges, node_scale=3000, smallest_font=6, biggest_font=10):
     return node_properties, edge_weights
 
 
-def diplot(graph):
-    plt.figure(figsize=(15, 10))
-    # possible styles '-','->','-[','-|>','<-','<->','<|-','<|-|>',']-',']-[','fancy','simple','wedge',
-    #               '|-|'
-    nodeProperties, edge_properties = vis_properties(graph)
-    seeds = [13, 0, 0x1b9a]
-    pos = nx.spring_layout(graph, seed=seeds[0])
-    nx.draw_networkx_nodes(graph, node_shape='o', node_color=[n.color for n in nodeProperties], node_size=[n.size for n in nodeProperties], pos=pos)
-    nx.draw_networkx_edges(graph, width=[p.width for p in edge_properties], arrowstyle='->', pos=pos)
-    # nx.draw_networkx_labels(graph, pos=pos, font_size=label_sizes)
-    label_font_map = {n.node: n.label for n in nodeProperties}
-    for node, (x, y) in pos.items():
-        plt.text(x, y, node, fontsize=label_font_map[node], ha='center', va='center')
-
-
 def gplot(edge_trace, node_trace):
     return go.Figure(data=[edge_trace, node_trace],
                      layout=go.Layout(
@@ -124,21 +111,31 @@ def create_graphviz():
     nodeProperties, edge_properties = vis_properties(edges)
     for ep in edge_properties:
         graph.edge(ep.edge.caller.name, ep.edge.callee.name, color=ep.color, arrowhead=ep.style, dir='back' if ep.style == 'dot' else 'forward')
-
-    return graph
+    graph.graph_attr['layout'] = 'sfdp'
+    graph.render(graphvis_file, cleanup=False, format='pdf')
+    print(f'create_nx_graph saved graph to {graphvis_file}')
 
 
 def create_nx_graph():
-    # Reading the file. "DiGraph" is telling to reading the data with node-node. "nodetype" will identify whether the node is number or string or any other type.
-    graph = nx.DiGraph()
+    plt.figure(figsize=(15, 10))
+    # possible styles '-','->','-[','-|>','<-','<->','<|-','<|-|>',']-',']-[','fancy','simple','wedge',
+    #               '|-|'
     nodes, edges = load_data()
+    nodeProperties, edge_properties = vis_properties(edges)
+    seeds = [13, 0, 0x1b9a]
+    graph = nx.DiGraph()
     for e in edges:
         graph.add_edge(e.caller, e.callee, type=e.refType)
-    pos = nx.spring_layout(graph, seed=1290)
-    # number of self-nodes
-    for n, p in pos.items():
-        graph.nodes[n]['pos'] = p
-    return graph
+    pos = nx.spring_layout(graph, seed=seeds[0])
+    nx.draw_networkx_nodes(graph, node_shape='o', node_color=[n.color for n in nodeProperties], node_size=[n.size for n in nodeProperties], pos=pos)
+    nx.draw_networkx_edges(graph, width=[p.width for p in edge_properties], arrowstyle='->', pos=pos)
+    # nx.draw_networkx_labels(graph, pos=pos, font_size=label_sizes)
+    label_font_map = {n.node: n.label for n in nodeProperties}
+    for node, (x, y) in pos.items():
+        plt.text(x, y, node, fontsize=label_font_map[node], ha='center', va='center')
+    plt.savefig(nx_graph_file)
+    print(f'create_nx_graph saved graph to {nx_graph_file}')
+    # plt.show()
 
 
 """
@@ -152,10 +149,6 @@ Quick start
 4. The result will be displayed on screen, also saved to file snapshot-data-serv-diagram.pdf
 """
 if __name__ == "__main__":
-    base_graph = create_graphviz()
-    base_graph.graph_attr['layout'] = 'sfdp'
-    base_graph.render('bar', cleanup=False, format='jpg')
+    create_graphviz()
 
-    # diplot(base_graph)
-    # plt.savefig(class_dependency_graph_pdf)
-    # plt.show()
+    create_nx_graph()
