@@ -100,7 +100,7 @@ class CustomEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, TypeNode):
             return {"name": obj.name, "classifier": obj.classifier.name, "sourceName": obj.sourceName, "sourceType": obj.sourceType.name}
-        if isinstance(obj, Edge):
+        if isinstance(obj, EdgeNode):
             caller = json.loads(json.dumps(obj.caller, cls=CustomEncoder))
             callee = json.loads(json.dumps(obj.callee, cls=CustomEncoder))
             return {"caller": caller, "callee": callee, "refType": obj.refType.name}
@@ -116,11 +116,11 @@ class TypeDependencyDecoder(json.JSONDecoder):
         if 'name' in dct and 'classifier' in dct and 'sourceName' in dct and 'sourceType' in dct:
             return TypeNode(dct['name'], TypeClassifier[dct['classifier']], dct['sourceName'], SourceType[dct['sourceType']])
         if 'caller' in dct and 'callee' in dct and 'refType' in dct:
-            return Edge(dct['caller'], dct['callee'], RefType[dct['refType']])
+            return EdgeNode(dct['caller'], dct['callee'], RefType[dct['refType']])
         return dct
 
 
-class Edge:
+class EdgeNode:
     def __init__(self, caller: TypeNode, callee: TypeNode, refType: RefType) -> None:
         self.callee = callee
         self.caller = caller
@@ -157,7 +157,7 @@ if __name__ == '__main__':
     print(f'original: {abc}\njson: {abc_json}\nresurrected: {resurrected_abc}')
 
     foo = TypeNode('Foo', TypeClassifier.CLASS, 'bar', SourceType.CPP)
-    edge = Edge(foo, abc, RefType.COMPOSITION)
+    edge = EdgeNode(foo, abc, RefType.COMPOSITION)
     edge_json = json.dumps(edge, cls=CustomEncoder)
     resurrected_edge = json.loads(edge_json, cls=TypeDependencyDecoder)
     print(f'original: {edge}\njson: {edge_json}\n resurrected: {resurrected_edge}')

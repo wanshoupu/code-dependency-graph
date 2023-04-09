@@ -70,6 +70,11 @@ def parse_class_body(typeNode: TypeNode, code):
     return CodeNode(class_body=code[class_start:class_end + 1], inheritance_declare=inheritance_declare or None)
 
 
+def strip(line):
+    i = line.find('//')
+    return line[:i].strip()
+
+
 def src_proc(src_file):
     """
     return a tupe of two things
@@ -77,7 +82,7 @@ def src_proc(src_file):
      includes: list of header files included in the src file
     """
     with codecs.open(src_file, 'r', "utf-8", "ignore") as fd:
-        code_lines = [l.strip() for l in fd.readlines() if not l.strip().startswith('//') and l.strip()]
+        code_lines = [strip(l) for l in fd.readlines()]
         code = '\n'.join(code_lines)
         nodes = search_type_declares(code, src_file)
         includes = set()

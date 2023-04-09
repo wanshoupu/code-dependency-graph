@@ -7,7 +7,7 @@ import re
 import threading
 from typing import Dict, Set
 
-from data_structures import SourceNode, Edge, CustomEncoder, TypeNode, RefType, CodeNode
+from data_structures import SourceNode, EdgeNode, CustomEncoder, TypeNode, RefType, CodeNode
 from src_analyzer import src_proc
 
 node_file = os.path.join(os.path.dirname(__file__), "types.txt")
@@ -109,7 +109,7 @@ def write_nodes(nodes):
 def write_edges(edges):
     with open(edge_file, "w") as fd:
         for edge in edges:
-            json.dump(edge, fd, cls=CustomEncoder)
+            json.dump({'caller': edge.caller.name, 'callee': edge.callee.name, 'refType': edge.refType.name}, fd)
             fd.write('\n')
 
 
@@ -145,7 +145,7 @@ def dep_analysis(folder):
             # for each declared type t, search code for dependencies in included_types
             deps = symbol_search(code, included_types)
             for d, refType in deps.items():
-                edges.add(Edge(t, d, refType))
+                edges.add(EdgeNode(t, d, refType))
     return nodes, edges
 
 

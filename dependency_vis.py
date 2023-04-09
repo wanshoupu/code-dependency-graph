@@ -7,7 +7,7 @@ import networkx as nx
 import plotly.graph_objects as go
 import graphviz as vis
 
-from data_structures import TypeDependencyDecoder, SourceType, RefType, TypeClassifier
+from data_structures import TypeDependencyDecoder, SourceType, RefType, TypeClassifier, EdgeNode
 
 node_file = os.path.join(os.path.dirname(__file__), "types.txt")
 edge_file = os.path.join(os.path.dirname(__file__), "type-dependencies.txt")
@@ -73,12 +73,17 @@ def gplot(edge_trace, node_trace):
 
 
 def load_data():
+    nodes = dict()
+    with open(node_file, 'r') as fd:
+        for line in fd.readlines():
+            node = json.loads(line, cls=TypeDependencyDecoder)
+            nodes[node.name] = node
+
     edges = set()
     with open(edge_file, 'r') as fd:
         for line in fd.readlines():
-            edge = json.loads(line, cls=TypeDependencyDecoder)
-            edges.add(edge)
-    nodes = set(c.caller for c in edges) | set(c.callee for c in edges)
+            edge = json.loads(line)
+            edges.add(EdgeNode(nodes[edge['caller']], nodes[edge['callee']], RefType[edge['refType']]))
     return nodes, edges
 
 
