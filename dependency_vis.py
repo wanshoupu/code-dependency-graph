@@ -93,6 +93,8 @@ def create_graphviz(output_file, seed=None):
             return {'arrowtail': 'dot', 'dir': 'back'}
         if reftype == RefType.INHERITANCE:
             return {'arrowhead': 'vee'}
+        if reftype == RefType.METHOD:
+            return {'arrowtail': 'odot', 'dir': 'back'}
         return dict()
 
     def get_shape(classifier):
@@ -128,7 +130,7 @@ def create_graphviz(output_file, seed=None):
         for i, rt in enumerate(RefType):
             sg.edge(ns[(i + 1) % len(ns)].name, ns[(i + 2) % len(ns)].name, label=rt.name, fontsize=str(legendFontSize), color='#3000ff50', penwidth='5', arrowsize='3', **get_style(rt))
 
-    graph.render(output_file, cleanup=True, format='pdf')
+    graph.render(output_file, cleanup=True, format='jpg')
     print(f'create_graphviz saved graph to {output_file}')
     del graph
 
