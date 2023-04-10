@@ -111,6 +111,22 @@ def write_edges(edges):
             fd.write('\n')
 
 
+def fieldMatch(statements, name):
+    pattern = fr'\W*{name}\W*'
+    for s in statements:
+        if re.match(pattern, s) and s.find('(') < 0 and s.find(')') < 0:
+            return True
+    return False
+
+
+def methodMatch(statements, name):
+    pattern = fr'\W*{name}\W*'
+    for s in statements:
+        if re.match(pattern, s) and s.find('(') >= 0 and s.find(')') >= 0:
+            return True
+    return False
+
+
 def symbol_search(code: CodeNode, types: Set[TypeNode]) -> Dict[TypeNode, RefType]:
     deps = dict()
     if code.inheritance_declare:
@@ -120,8 +136,14 @@ def symbol_search(code: CodeNode, types: Set[TypeNode]) -> Dict[TypeNode, RefTyp
 
     if code.class_body:
         for t in types:
-            if code.class_body.find(t.name) >= 0:
+            pattern = fr'\b{t.name}\b'
+            statements = [s for s in code.class_body.split(';') if re.findall(pattern, s)]
+            if not statements:
+                continue
+            if all(s.find('(') < 0 and s.find(')') < 0 for s in statements):
                 deps[t] = RefType.COMPOSITION
+            else:
+                deps[t] = RefType.METHOD
 
     return deps
 

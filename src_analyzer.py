@@ -91,7 +91,7 @@ def src_proc(src_file):
             src, ext = os.path.splitext(hf)
             if ext:
                 includes.add(SourceNode(hf))
-        nodes = search_type_declares(code.replace('\n', ' '), src_file)
+        nodes = search_type_declares(code, src_file)
         return nodes, includes
 
 
