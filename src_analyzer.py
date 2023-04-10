@@ -55,7 +55,7 @@ def parse_class_body(typeNode: TypeNode, code):
     # eliminate forward declaration
     first_statement = code.find(';')
     class_start = code.find('{')
-    if class_start == -1 or first_statement < class_start:
+    if first_statement != -1 and (class_start == -1 or first_statement < class_start):
         return None
     inheritance_declare = code[:class_start].strip()
     bracket_balance = 0
@@ -96,7 +96,7 @@ def src_proc(src_file):
 
 
 if __name__ == '__main__':
-    src_file = '/Users/swan/workspace/client/game-engine/Client/App/ads/include/ads/BackendAdsProvider.h'
+    src_file = '/Users/swan/workspace/client/game-engine/Client/App/ads/include/ads/AdGui.h'
     nodes, includes = src_proc(src_file)
     print(nodes)
     print(includes)

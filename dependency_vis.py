@@ -116,18 +116,19 @@ def create_graphviz(output_file, seed=None):
         graph.edge(caller.name, callee.name, color=p.color, penwidth='5', arrowsize='3', **get_style(p.edge.refType))
     for n, p in nodeProperties.items():
         graph.node(n.name, fontsize=str(p.label), width=str(p.size), height=str(p.size), shape=get_shape(n.classifier), style='filled', color='#0000ff80')
-    with graph.subgraph(name='Legends', graph_attr={'layout': 'neato'}) as sg:
-        # create a legend subgraph
+    with graph.subgraph(name='legends', graph_attr={'layout': 'neato'}) as sg:
         import statistics as stats
         legendNodeSize = stats.median([p.size for p in nodeProperties.values()])
         legendFontSize = stats.median([p.label for p in nodeProperties.values()])
+        sg.attr(label='Legends', fontsize=str(legendFontSize))
+        # create a legend subgraph
         ns = [tc for tc in TypeClassifier]
         for tc in ns:
             sg.node(tc.name, shape=get_shape(tc), fontsize=str(legendFontSize), rank='sink', width=str(legendNodeSize), height=str(legendNodeSize), style='filled', color='#3000ff50')
         for i, rt in enumerate(RefType):
             sg.edge(ns[(i + 1) % len(ns)].name, ns[(i + 2) % len(ns)].name, label=rt.name, fontsize=str(legendFontSize), color='#3000ff50', penwidth='5', arrowsize='3', **get_style(rt))
 
-    graph.render(output_file, cleanup=True, format='jpg')
+    graph.render(output_file, cleanup=True, format='pdf')
     print(f'create_graphviz saved graph to {output_file}')
     del graph
 
