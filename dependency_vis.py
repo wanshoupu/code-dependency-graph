@@ -87,7 +87,7 @@ def load_data():
     return nodes, edges
 
 
-def create_graphviz():
+def create_graphviz(output_file, seed=None):
     def get_style(reftype):
         if reftype == RefType.COMPOSITION:
             return {'arrowtail': 'dot', 'dir': 'back'}
@@ -104,16 +104,26 @@ def create_graphviz():
 
     """ Create a graph from a folder. """
     # Find nodes and clusters
-    graph = vis.Digraph(graph_attr={'layout': 'sfdp', 'seed': '1234', 'outputorder': 'edgelast'})
+    graph = vis.Digraph(graph_attr={'layout': 'dot', 'outputorder': 'edgelast'})
+    if seed is not None:
+        graph.graph_attr['seed'] = f'{seed}'
     # Find edges and create clusters
     nodes, edges = load_data()
-    nodeProperties, edge_properties = vis_properties(edges, node_scale=1, smallest_font=20, biggest_font=50)
+    nodeProperties, edge_properties = vis_properties(edges, node_scale=1, smallest_font=30, biggest_font=50)
     for (caller, callee), p in edge_properties.items():
-        graph.edge(caller.name, callee.name, color=p.color, **get_style(p.edge.refType))
+        graph.edge(caller.name, callee.name, color=p.color, penwidth='5', arrowsize='3', **get_style(p.edge.refType))
     for n, p in nodeProperties.items():
         graph.node(n.name, fontsize=str(p.label), width=str(p.size), height=str(p.size), shape=get_shape(n.classifier), style='filled', color="#0000ff80")
-    graph.render(graphvis_file, cleanup=True, format='pdf')
-    print(f'create_nx_graph saved graph to {graphvis_file}')
+
+    # create a legend subgraph
+    legend = vis.Digraph()
+    legend.node('key', label='Legend', shape='none', rank='sink')
+
+    # combine the graph and legend subgraph
+    graph.subgraph(legend)
+    graph.render(output_file, cleanup=True, format='jpg')
+    print(f'create_graphviz saved graph to {output_file}')
+    del graph
 
 
 def create_nx_graph():
@@ -164,5 +174,6 @@ Quick start
 4. The result will be displayed on screen, also saved to file snapshot-data-serv-diagram.pdf
 """
 if __name__ == "__main__":
-    create_graphviz()
+    for i in range(1):
+        create_graphviz(f'{graphvis_file}-{i}', i)
     # create_nx_graph()
