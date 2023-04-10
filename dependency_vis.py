@@ -93,6 +93,7 @@ def create_graphviz(output_file, seed=None):
             return {'arrowtail': 'dot', 'dir': 'back'}
         if reftype == RefType.INHERITANCE:
             return {'arrowhead': 'vee'}
+        return dict()
 
     def get_shape(classifier):
         if classifier == TypeClassifier.CLASS:
@@ -101,6 +102,7 @@ def create_graphviz(output_file, seed=None):
             return 'rectangle'
         if classifier == TypeClassifier.STRUCT:
             return 'hexagon'
+        return 'none'
 
     """ Create a graph from a folder. """
     # Find nodes and clusters
@@ -113,14 +115,18 @@ def create_graphviz(output_file, seed=None):
     for (caller, callee), p in edge_properties.items():
         graph.edge(caller.name, callee.name, color=p.color, penwidth='5', arrowsize='3', **get_style(p.edge.refType))
     for n, p in nodeProperties.items():
-        graph.node(n.name, fontsize=str(p.label), width=str(p.size), height=str(p.size), shape=get_shape(n.classifier), style='filled', color="#0000ff80")
+        graph.node(n.name, fontsize=str(p.label), width=str(p.size), height=str(p.size), shape=get_shape(n.classifier), style='filled', color='#0000ff80')
+    with graph.subgraph(name='Legends', graph_attr={'layout': 'neato'}) as sg:
+        # create a legend subgraph
+        import statistics as stats
+        legendNodeSize = stats.median([p.size for p in nodeProperties.values()])
+        legendFontSize = stats.median([p.label for p in nodeProperties.values()])
+        ns = [tc for tc in TypeClassifier]
+        for tc in ns:
+            sg.node(tc.name, shape=get_shape(tc), fontsize=str(legendFontSize), rank='sink', width=str(legendNodeSize), height=str(legendNodeSize), style='filled', color='#3000ff50')
+        for i, rt in enumerate(RefType):
+            sg.edge(ns[(i + 1) % len(ns)].name, ns[(i + 2) % len(ns)].name, label=rt.name, fontsize=str(legendFontSize), color='#3000ff50', penwidth='5', arrowsize='3', **get_style(rt))
 
-    # create a legend subgraph
-    legend = vis.Digraph()
-    legend.node('key', label='Legend', shape='none', rank='sink')
-
-    # combine the graph and legend subgraph
-    graph.subgraph(legend)
     graph.render(output_file, cleanup=True, format='jpg')
     print(f'create_graphviz saved graph to {output_file}')
     del graph

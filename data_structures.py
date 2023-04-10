@@ -7,7 +7,7 @@ from enum import Enum
 class RefType(Enum):
     INHERITANCE = 1
     COMPOSITION = 2
-    FUNCTION = 3
+    METHOD = 3
 
 
 class SourceType(Enum):
