@@ -176,11 +176,8 @@ def create_nx_graph():
 Quick start
 1. install all the requirements
     pip3 install -r lightstep/requirements.txt
-2. Configure lightstep api key as env var
-    export LS_API_KEY=iJIUzI1NiIsImtpZCI6
 3. Run command
    python3 serv_dep_vis.py
-4. The result will be displayed on screen, also saved to file snapshot-data-serv-diagram.pdf
 """
 if __name__ == "__main__":
     for i in range(1):
