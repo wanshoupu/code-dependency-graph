@@ -179,6 +179,11 @@ def verify_data(nodes, edges):
         callee = edge.callee
         assert caller in nodes, f'{caller} not found'
         assert callee in nodes, f'{callee} not found'
+    referenced_nodes = set(e.callee for e in edges) | set(e.caller for e in edges)
+    unref_nodes = nodes - referenced_nodes
+    if unref_nodes:
+        print(f'Here are unreferenced types: {unref_nodes}')
+
     print('Data verified and no anomaly found')
 
 
