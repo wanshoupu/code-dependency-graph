@@ -88,7 +88,7 @@ def load_data():
 
 
 def create_graphviz(output_file, seed=None):
-    def get_style(reftype):
+    def edge_style(reftype):
         if reftype == RefType.COMPOSITION:
             return {'arrowtail': 'dot', 'dir': 'back'}
         if reftype == RefType.INHERITANCE:
@@ -97,27 +97,27 @@ def create_graphviz(output_file, seed=None):
             return {'arrowtail': 'odot', 'dir': 'back'}
         return dict()
 
-    def get_shape(classifier):
+    def shape_style(classifier):
         if classifier == TypeClassifier.CLASS:
-            return 'circle'
+            return {'shape': 'circle', 'color': '#0000ff80', 'style': 'filled'}
         if classifier == TypeClassifier.ENUM:
-            return 'rectangle'
+            return {'shape': 'rectangle', 'color': '#0000ff80', 'style': 'filled'}
         if classifier == TypeClassifier.STRUCT:
-            return 'hexagon'
-        return 'none'
+            return {'shape': 'hexagon', 'color': '#0000ff80', 'style': 'filled'}
+        return dict()
 
     """ Create a graph from a folder. """
     # Find nodes and clusters
-    graph = vis.Digraph(graph_attr={'layout': 'dot', 'outputorder': 'edgelast'})
+    graph = vis.Digraph(graph_attr={'layout': 'dot', 'outputorder': 'edgelast', 'splines': 'true', 'overlap': 'false', 'nodesep': '1.5'})
     if seed is not None:
         graph.graph_attr['seed'] = f'{seed}'
     # Find edges and create clusters
     nodes, edges = load_data()
     nodeProperties, edge_properties = vis_properties(edges, node_scale=1, smallest_font=30, biggest_font=50)
     for (caller, callee), p in edge_properties.items():
-        graph.edge(caller.name, callee.name, color=p.color, penwidth='5', arrowsize='3', **get_style(p.edge.refType))
+        graph.edge(caller.name, callee.name, color=p.color, penwidth='5', arrowsize='3', **edge_style(p.edge.refType))
     for n, p in nodeProperties.items():
-        graph.node(n.name, fontsize=str(p.label), width=str(p.size), height=str(p.size), shape=get_shape(n.classifier), style='filled', color='#0000ff80')
+        graph.node(n.name, fontsize=str(p.label), width=str(p.size), height=str(p.size), **shape_style(n.classifier))
     with graph.subgraph(name='legends', graph_attr={'layout': 'neato'}) as sg:
         import statistics as stats
         legendNodeSize = stats.median([p.size for p in nodeProperties.values()])
@@ -126,10 +126,11 @@ def create_graphviz(output_file, seed=None):
         # create a legend subgraph
         ns = [tc for tc in TypeClassifier]
         for tc in ns:
-            sg.node(tc.name, shape=get_shape(tc), fontsize=str(legendFontSize), rank='sink', width=str(legendNodeSize), height=str(legendNodeSize), style='filled', color='#3000ff50')
+            sg.node(tc.name, fontsize=str(legendFontSize), rank='sink', width=str(legendNodeSize), height=str(legendNodeSize), **shape_style(tc))
         for i, rt in enumerate(RefType):
-            sg.edge(ns[(i + 1) % len(ns)].name, ns[(i + 2) % len(ns)].name, label=rt.name, fontsize=str(legendFontSize), color='#3000ff50', penwidth='5', arrowsize='3', **get_style(rt))
+            sg.edge(ns[(i + 1) % len(ns)].name, ns[(i + 2) % len(ns)].name, label=rt.name, fontsize=str(legendFontSize), color='#3000ff50', penwidth='5', arrowsize='3', **edge_style(rt))
 
+    graph.render(output_file, cleanup=True, format='pdf')
     graph.render(output_file, cleanup=True, format='jpg')
     print(f'create_graphviz saved graph to {output_file}')
     del graph
