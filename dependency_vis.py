@@ -174,11 +174,9 @@ def create_nx_graph():
 
 
 """
-Quick start
-1. install all the requirements
-    pip3 install -r lightstep/requirements.txt
-3. Run command
-   python3 serv_dep_vis.py
+caveats:
+1. if two types are declared in the same source file, their mutual references will not be displayed
+2. Types not defined within the search scope is not displayed 
 """
 if __name__ == "__main__":
     for i in range(1):
