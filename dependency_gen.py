@@ -148,7 +148,7 @@ def symbol_search(code: CodeNode, types: Set[TypeNode]) -> Dict[TypeNode, RefTyp
     return deps
 
 
-def dep_analysis(folder):
+def dep_analysis(folders):
     def get_included_types(src):
         included_types = set()
         for s in includes.get(src, set()):
@@ -156,7 +156,13 @@ def dep_analysis(folder):
                 included_types.add(ts)
         return included_types
 
-    includes, declares = source_proc(folder)
+    includes = dict()
+    declares = dict()
+    for folder in folders:
+        i, d = source_proc(folder)
+        includes.update(i)
+        declares.update(d)
+
     nodes = {k for v in declares.values() for k in v.keys()}
     edges = set()
     for src, types in declares.items():
@@ -189,9 +195,9 @@ def verify_data(nodes, edges):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('folder', help='Path to the folder to scan')
+    parser.add_argument('folders', metavar='directory', nargs='+', help='Path to the folder(s) to scan for src')
     args = parser.parse_args()
-    nodes, edges = dep_analysis(args.folder)
+    nodes, edges = dep_analysis(args.folders)
     verify_data(nodes, edges)
     write_nodes(nodes)
     write_edges(edges)
