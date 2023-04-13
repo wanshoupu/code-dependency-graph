@@ -11,7 +11,7 @@ The script depends on [Graphviz](https://www.graphviz.org/) to draw the graph.
 On Ubuntu, you can install the dependencies with these two commands:
 
 ```
-sudo apt install graphviz
+brew install graphviz
 pip3 install -r requirements.txt
 ```
 
@@ -23,22 +23,22 @@ usage: dependency_graph.py [-h] [-f {bmp,gif,jpg,png,pdf,svg}] [-v] [-c]
 
 positional arguments:
   folder                Path to the folder to scan
-  output                Path of the output file without the extension
 
 optional arguments:
+  -o, --output          directory to contain the output files.
+                        default: current directory
   -h, --help            show this help message and exit
-  -f {bmp,gif,jpg,png,pdf,svg}, --format {bmp,gif,jpg,png,pdf,svg}
-                        Format of the output
-  -v, --view            View the graph
-  -c, --cluster         Create a cluster for each subfolder
 ```
 
 ## Examples
 
 Example of a graph produced by the script:
 
-![Example 1](https://github.com/pvigier/dependency-graph/raw/master/examples/example1.png)
-
-Graph produced for the same project with clusters (`-c`):
+./dependency_graph.py "$folder" --output "$(basename $folder)"
+output files:
+* nodes.txt
+* edges.txt
+* graph.jpg
+* graph.pdf
 
 ![Example 2](https://github.com/pvigier/dependency-graph/raw/master/examples/example2.png)
