@@ -18,11 +18,10 @@ pip3 install -r requirements.txt
 ## Manual
 
 ```
-usage: dependency_graph.py [-h] [-f {bmp,gif,jpg,png,pdf,svg}] [-v] [-c]
-                           folder output
+usage: dependency_graph.py input_dirs [-o output_dir]
 
 positional arguments:
-  folder                Path to the folder to scan
+  folders                Path to one or more directories to scan for C++ source files
 
 optional arguments:
   -o, --output          directory to contain the output files.
