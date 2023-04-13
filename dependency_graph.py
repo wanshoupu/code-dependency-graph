@@ -8,10 +8,10 @@ from dependency_vis import create_graphviz
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('folders', metavar='directory', nargs='+', help='Path to the folder(s) to scan for src')
+    parser.add_argument('src_dirs', metavar='source_directories', nargs='+', help='Path to the folder(s) to scan for src')
     parser.add_argument('-o', '--output', help='Directory for the outputs', default='.')
     args = parser.parse_args()
-    input_dirs = args.folders
+    input_dirs = args.src_dirs
     output_dir = args.output
     for d in input_dirs:
         if not os.path.exists(d):

@@ -17,6 +17,9 @@ valid_extensions = valid_headers[0] + valid_sources[0]
 type_declare_regex = r'(class|struct|enum(?: class)?) +([_a-zA-Z][_a-zA-Z0-9]*)'
 type_declare_pattern = re.compile(type_declare_regex)
 
+template_regex = r'template<[^>]*>'
+template_pattern = re.compile(template_regex)
+
 
 def search_type_declares(code, src_file):
     """
@@ -70,6 +73,14 @@ def strip(line):
     return line[:i].strip()
 
 
+def remove_templates(code):
+    """
+    code such as template<int w, std::size_t n, class SeedSeq, class IntType> poses problem for detecting tpes
+    as preprocessing, we will remove them
+    """
+    return re.sub(template_pattern, '', code)
+
+
 def src_proc(src_file):
     """
     return a tupe of two things
@@ -79,6 +90,7 @@ def src_proc(src_file):
     with codecs.open(src_file, 'r', "utf-8", "ignore") as fd:
         code_lines = [strip(l) for l in fd.readlines()]
         code = '\n'.join([l for l in code_lines if l])
+        code = remove_templates(code)
         includes = set()
         for header in include_regex.findall(code):
             hf = os.path.basename(header)
@@ -90,7 +102,7 @@ def src_proc(src_file):
 
 
 if __name__ == '__main__':
-    src_file = '/Users/swan/workspace/client/game-engine/Client/App/ads/include/ads/AdGui.h'
+    src_file = '/Users/swan/workspace/client/game-engine/Client/ThirdParty/boost_1_56_0/include/boost/random/detail/seed_impl.hpp'
     nodes, includes = src_proc(src_file)
     print(f'Found declared types: {set(nodes.keys())}')
     print(f'Included headers: {includes}')

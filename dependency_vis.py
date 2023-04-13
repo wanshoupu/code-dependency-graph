@@ -104,6 +104,9 @@ def create_graphviz(edges, output_file, seed=None):
             return {'shape': 'hexagon', 'color': '#0000ff80', 'style': 'filled'}
         return dict()
 
+    if not edges:
+        print('No edge detected. No graph is to be generated')
+        return
     """ Create a graph from a folder. """
     # Find nodes and clusters
     graph = vis.Digraph(graph_attr={'layout': 'dot', 'outputorder': 'edgelast', 'splines': 'true', 'overlap': 'false', 'nodesep': '1.5'})
@@ -129,7 +132,7 @@ def create_graphviz(edges, output_file, seed=None):
 
     graph.render(output_file, cleanup=True, format='pdf')
     graph.render(output_file, cleanup=True, format='jpg')
-    print(f'Saved graph to {output_file}')
+    print(f'Saved graph to {output_file}.pdf and {output_file}.jpg')
     del graph
 
 
