@@ -179,6 +179,5 @@ caveats:
 2. Types not defined within the search scope is not displayed 
 """
 if __name__ == "__main__":
-    for i in range(1):
-        create_graphviz(f'{graphvis_file}-{i}', i)
+    create_graphviz(graphvis_file)
     # create_nx_graph()

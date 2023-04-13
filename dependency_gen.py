@@ -74,11 +74,11 @@ def source_proc(root_dir):
             src_file = assembly_line.get()
             src_name = SourceNode(os.path.basename(src_file))
             print(f'Processing {src_file}')
-            ns, icls = src_proc(src_file)
+            ns, incls = src_proc(src_file)
             if ns:
                 declares[src_name] = ns
-            if icls:
-                includes[src_name] = icls
+            if incls:
+                includes[src_name] = incls
             print(f'Finished {src_file}')
             assembly_line.task_done()
 
