@@ -97,18 +97,20 @@ def source_proc(root_dir):
     return includes, declares
 
 
-def write_nodes(nodes):
-    with open(node_file, "w") as fd:
+def write_nodes(nodes, file=node_file):
+    with open(file, "w") as fd:
         for node in nodes:
             json.dump(node, fd, cls=CustomEncoder)
             fd.write('\n')
+    print(f'Saved nodes to {file}')
 
 
-def write_edges(edges):
-    with open(edge_file, "w") as fd:
+def write_edges(edges, file=edge_file):
+    with open(file, "w") as fd:
         for edge in edges:
             json.dump({'caller': edge.caller.name, 'callee': edge.callee.name, 'refType': edge.refType.name}, fd)
             fd.write('\n')
+    print(f'Saved edges to {file}')
 
 
 def fieldMatch(statements, name):

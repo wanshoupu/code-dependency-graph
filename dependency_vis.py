@@ -9,12 +9,10 @@ import graphviz as vis
 
 from data_structures import TypeDependencyDecoder, SourceType, RefType, TypeClassifier, EdgeNode
 
-node_file = os.path.join(os.path.dirname(__file__), "types.txt")
-edge_file = os.path.join(os.path.dirname(__file__), "type-dependencies.txt")
-graphvis_file = os.path.join(os.path.dirname(edge_file),
-                             os.path.basename(edge_file) + ".graphvis")
-nx_graph_file = os.path.join(os.path.dirname(edge_file),
-                             os.path.basename(edge_file) + ".nxgraph.pdf")
+node_file = os.path.join(os.path.dirname(__file__), "nodes.txt")
+edge_file = os.path.join(os.path.dirname(__file__), "edges.txt")
+graphvis_file = os.path.join(os.path.dirname(edge_file), "graph")
+nx_graph_file = os.path.join(os.path.dirname(edge_file), ".nxgraph.pdf")
 
 
 class NodeProperty:
@@ -87,7 +85,7 @@ def load_data():
     return nodes, edges
 
 
-def create_graphviz(output_file, seed=None):
+def create_graphviz(edges, output_file, seed=None):
     def edge_style(reftype):
         if reftype == RefType.COMPOSITION:
             return {'arrowtail': 'dot', 'dir': 'back'}
@@ -112,7 +110,6 @@ def create_graphviz(output_file, seed=None):
     if seed is not None:
         graph.graph_attr['seed'] = f'{seed}'
     # Find edges and create clusters
-    nodes, edges = load_data()
     nodeProperties, edge_properties = vis_properties(edges, node_scale=1, smallest_font=30, biggest_font=50)
     for (caller, callee), p in edge_properties.items():
         graph.edge(caller.name, callee.name, color=p.color, penwidth='5', arrowsize='3', **edge_style(p.edge.refType))
@@ -132,7 +129,7 @@ def create_graphviz(output_file, seed=None):
 
     graph.render(output_file, cleanup=True, format='pdf')
     graph.render(output_file, cleanup=True, format='jpg')
-    print(f'create_graphviz saved graph to {output_file}')
+    print(f'Saved graph to {output_file}')
     del graph
 
 
@@ -179,5 +176,6 @@ caveats:
 2. Types not defined within the search scope is not displayed 
 """
 if __name__ == "__main__":
-    create_graphviz(graphvis_file)
+    nodes, edges = load_data()
+    create_graphviz(edges, graphvis_file)
     # create_nx_graph()
