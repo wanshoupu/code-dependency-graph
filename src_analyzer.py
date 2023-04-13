@@ -17,7 +17,7 @@ valid_extensions = valid_headers[0] + valid_sources[0]
 type_declare_regex = r'(class|struct|enum(?: class)?) +([_a-zA-Z][_a-zA-Z0-9]*)'
 type_declare_pattern = re.compile(type_declare_regex)
 
-template_regex = r'template<[^>]*>'
+template_regex = r'template\s*<[^>]*>'
 template_pattern = re.compile(template_regex)
 
 
@@ -102,7 +102,7 @@ def src_proc(src_file):
 
 
 if __name__ == '__main__':
-    src_file = '/Users/swan/workspace/client/game-engine/Client/ThirdParty/boost_1_56_0/include/boost/random/detail/seed_impl.hpp'
+    src_file = '/Users/swan/workspace/client/game-engine/Client/ThirdParty/boost_1_56_0/include/boost/move/detail/unique_ptr_meta_utils.hpp'
     nodes, includes = src_proc(src_file)
     print(f'Found declared types: {set(nodes.keys())}')
     print(f'Included headers: {includes}')
