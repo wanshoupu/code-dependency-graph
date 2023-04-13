@@ -14,7 +14,7 @@ valid_headers = [['.h', '.hpp'], 'red']
 valid_sources = [['.c', '.cc', '.cpp'], 'blue']
 valid_extensions = valid_headers[0] + valid_sources[0]
 
-type_declare_regex = r'(class|struct|enum(?: class)?) +([_a-zA-Z][_a-zA-Z0-9]*)'
+type_declare_regex = r'(class|struct|enum(?: class)?) +([_a-zA-Z][_a-zA-Z0-9]*)\s*(:[^\{]+)?\{'
 type_declare_pattern = re.compile(type_declare_regex)
 
 template_regex = r'template\s*<[^>]*>'
@@ -33,7 +33,7 @@ def search_type_declares(code, src_file):
     result = dict()
     declare_blocks = re.finditer(type_declare_pattern, code)
     for block in declare_blocks:
-        t, n = block.groups()
+        t, n, d = block.groups()
         if not n:
             print(f'Source file {block} contains invalid type declaration', file=sys.stderr)
 
@@ -42,30 +42,24 @@ def search_type_declares(code, src_file):
             print(f'Block "{block}" do not have a proper TypeClassifier', file=sys.stderr)
 
         typeNode = TypeNode(n, classifier, sourceName, sourceType)
-        classBody = parse_class_body(typeNode, code[block.end():])
-        if classBody:
-            result[typeNode] = classBody
+        classBody = parse_class_body(code[block.end():])
+        assert classBody, f'{typeNode} has no body'
+        result[typeNode] = CodeNode(class_body=classBody, inheritance_declare=d or None)
     return result
 
 
-def parse_class_body(typeNode: TypeNode, code):
-    # eliminate forward declaration
-    first_statement = code.find(';')
-    class_start = code.find('{')
-    if first_statement != -1 and (class_start == -1 or first_statement < class_start):
-        return None
-    inheritance_declare = code[:class_start].strip()
-    bracket_balance = 0
+def parse_class_body(code):
+    bracket_balance = 1
     class_end = -1
-    for i, c in enumerate(code[class_start:]):
+    for i, c in enumerate(code):
         if c == '{':
             bracket_balance += 1
         elif c == '}':
             bracket_balance -= 1
         if bracket_balance == 0:
-            class_end = class_start + i + 1
+            class_end = i + 1
             break
-    return CodeNode(class_body=code[class_start:class_end], inheritance_declare=inheritance_declare or None)
+    return code[:class_end].strip()
 
 
 def strip(line):
@@ -102,7 +96,8 @@ def src_proc(src_file):
 
 
 if __name__ == '__main__':
-    src_file = '/Users/swan/workspace/client/game-engine/Client/ThirdParty/boost_1_56_0/include/boost/move/detail/unique_ptr_meta_utils.hpp'
+    src_file = '/Users/swan/workspace/client/game-engine/Client/App/ads/include/ads/AdsProviderInterface.h'
     nodes, includes = src_proc(src_file)
-    print(f'Found declared types: {set(nodes.keys())}')
+    printable_types = {n: ('with inheritance' if c.inheritance_declare is not None else 'no inheritance', 'with body' if c.class_body else 'no body') for n, c in nodes.items()}
+    print(f'Found declared types: {printable_types}')
     print(f'Included headers: {includes}')
