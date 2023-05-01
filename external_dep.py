@@ -92,9 +92,14 @@ def source_proc(header_files, src_files):
     assembly_line.join()
 
     print('All work completed')
-    used_headers = set().union(*ext_deps.values())
-    unused_headers = header_files - used_headers
-    return ext_deps, unused_headers
+
+    used_headers = defaultdict(set)
+    for s, deps in ext_deps.items():
+        for d in deps:
+            used_headers[d].add(s)
+
+    unused_headers = header_files - used_headers.keys()
+    return used_headers, unused_headers
 
 
 def find_srcs(rootdir, subdir):
@@ -121,5 +126,6 @@ if __name__ == '__main__':
     ext_deps, unused_headers = source_proc(proj_header_files, ext_files)
     print(unused_headers)
     for es, deps in ext_deps.items():
+        print(f'{es}:')
         for dep in deps:
-            print(f'{es}:\n\t{dep}')
+            print(f'\t{dep}')
