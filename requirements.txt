@@ -1,1 +1,4 @@
 graphviz
+matplotlib
+networkx
+plotly

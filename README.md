@@ -1,18 +1,37 @@
 # dependency-graph
 
-A python script to show the "include" dependency of C++ classes.
+A lightweight python script to draw dependency diagrams of C++ classes that features
+* Inheritance
+* Composition
+* Method references
+* Distinguish classes, enums, and structs
 
-It is useful to check the presence of circular dependencies.
+# Quickstart
+To use it follow the following steps
 
-## Installation
-
-The script depends on [Graphviz](https://www.graphviz.org/) to draw the graph. 
-
-On Ubuntu, you can install the dependencies with these two commands:
-
+1. Install the required dependencies
+```commandline
+pip install -r requirements.txt
 ```
-brew install graphviz
-pip3 install -r requirements.txt
+2. Run the command
+```commandline
+<path-to-repo>/dependency_graph.py <path-to-c++-folder> -o <output-folder>
+```
+3. Check the result
+
+The program will write the following files in the `<output-folder>`
+* `nodes.txt` lists all the nodes (classes, enums, structs)
+* `edges.txt` lists all the edges (inheritance, composition, references)
+* `graph.jpg` represents the dependency diagram in JEPG format for quick proofread
+* `graph.pdf` represents the vector version of the same dependency diagram in PDF format
+
+# Tips
+Because the nondeterministic nature of `graphviz`, the rendering of the dependency diagram is 
+not reproducible and may vary in quality. So one tip is to run the same program for multiple 
+time and choose the best representation in graph. For example: 
+```commandline
+for i in {1..5}; do 2>&1 1>/dev/null <path-to-repo>/dependency_graph.py <path-to-c++-folder> -o 
+<output-folder>-$i; done
 ```
 
 ## Manual
@@ -28,16 +47,3 @@ optional arguments:
                         default: current directory
   -h, --help            show this help message and exit
 ```
-
-## Examples
-
-Example of a graph produced by the script:
-
-./dependency_graph.py "$folder" --output "$(basename $folder)"
-output files:
-* nodes.txt
-* edges.txt
-* graph.jpg
-* graph.pdf
-
-![Example 2](https://github.com/pvigier/dependency-graph/raw/master/examples/example2.png)
