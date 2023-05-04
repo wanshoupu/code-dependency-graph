@@ -46,9 +46,6 @@ def find_code_files(path, recursive=True):
     Return a list of all the files in the folder.
     If recursive is True, the function will search recursively.
     """
-    # return ['/Users/swan/workspace/client/game-engine/Client/App/ads/include/ads/AdInstanceInterface.h',
-    #         '/Users/swan/workspace/client/game-engine/Client/App/ads/include/ads/BackendAdsProvider.h',
-    #         '/Users/swan/workspace/client/game-engine/Client/App/ads/include/ads/AdsProviderInterface.h']
     if os.path.exists(path) and os.path.isfile(path):
         return [path]
     files = []
