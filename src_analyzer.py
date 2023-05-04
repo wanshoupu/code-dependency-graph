@@ -1,3 +1,4 @@
+import argparse
 import codecs
 import os
 import queue
@@ -96,7 +97,10 @@ def src_proc(src_file):
 
 
 if __name__ == '__main__':
-    src_file = '/Users/swan/workspace/client/game-engine/Client/App/ads/include/ads/AdsProviderInterface.h'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('src_dirs', metavar='source_directories', help='Path to the folder(s) to scan for src')
+    args = parser.parse_args()
+    src_file = args.src_dirs
     nodes, includes = src_proc(src_file)
     printable_types = {n: ('with inheritance' if c.inheritance_declare is not None else 'no inheritance', 'with body' if c.class_body else 'no body') for n, c in nodes.items()}
     print(f'Found declared types: {printable_types}')
