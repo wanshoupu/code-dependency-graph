@@ -109,7 +109,7 @@ def create_graphviz(edges, output_file, seed=None):
         return
     """ Create a graph from a folder. """
     # Find nodes and clusters
-    graph = vis.Digraph(graph_attr={'layout': 'dot', 'outputorder': 'edgelast', 'splines': 'true', 'overlap': 'false', 'nodesep': '1.5'})
+    graph = vis.Digraph(graph_attr={'layout': 'dot', 'ratio': '.7', 'outputorder': 'edgelast', 'splines': 'true', 'overlap': 'false', 'nodesep': '0.25'})
     if seed is not None:
         graph.graph_attr['seed'] = f'{seed}'
     # Find edges and create clusters
