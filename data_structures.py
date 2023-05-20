@@ -12,7 +12,7 @@ class RefType(Enum):
 
 class SourceType(Enum):
     HEADER = re.compile(r'\.h|\.hpp')
-    CPP = re.compile(r'\.c|\.cc|\.cpp|\.c\+\+')
+    SOURCE = re.compile(r'\.c|\.cc|\.cpp|\.c\+\+')
 
     @staticmethod
     def parseval(symbol):
@@ -33,48 +33,49 @@ class TypeClassifier(Enum):
                 return item
 
 
-class TypeNode:
-    def __init__(self, name, classifier: TypeClassifier, sourceName, sourceType: SourceType) -> None:
-        # class name
-        self.name = name
-
-        self.sourceType = sourceType
-        # file basename without extension
-        self.sourceName = sourceName
-        self.classifier = classifier
-
-    def __hash__(self) -> int:
-        return hash(self.name) ^ hash(self.sourceType) ^ hash(self.sourceName) ^ hash(self.classifier)
-
-    def __eq__(self, other):
-        if not isinstance(other, TypeNode):
-            return False
-
-        return (self.name == other.name
-                and self.sourceType == other.sourceType
-                and self.sourceName == other.sourceName
-                and self.classifier == other.classifier)
-
-    def __repr__(self) -> str:
-        return self.name
-
-
 class SourceNode:
     def __init__(self, srcFile) -> None:
-        self.sourceName, self.sourceType = os.path.splitext(srcFile)
+        self.srcFile = srcFile
+        self.sourceName, ext = os.path.splitext(os.path.basename(srcFile))
+        self.sourceType = SourceType.parseval(ext)
 
     def __hash__(self) -> int:
-        return hash(self.sourceType) ^ hash(self.sourceName)
+        return hash(self.srcFile)
 
     def __eq__(self, other):
         if not isinstance(other, SourceNode):
             return False
 
-        return (self.sourceType == other.sourceType
-                and self.sourceName == other.sourceName)
+        return self.srcFile == other.srcFile
+
+    def __lt__(self, other):
+        return self.srcFile < other.srcFile
 
     def __repr__(self) -> str:
-        return self.sourceName
+        return self.srcFile
+
+
+class SymbolNode:
+    def __init__(self, name, classifier: TypeClassifier, source: SourceNode) -> None:
+        # class name
+        self.name = name
+
+        self.source = source
+        self.classifier = classifier
+
+    def __hash__(self) -> int:
+        return hash(self.name) ^ hash(self.source) ^ hash(self.classifier)
+
+    def __eq__(self, other):
+        if not isinstance(other, SymbolNode):
+            return False
+
+        return (self.name == other.name
+                and self.source == other.source
+                and self.classifier == other.classifier)
+
+    def __repr__(self) -> str:
+        return self.name
 
 
 class CodeNode:
@@ -98,8 +99,8 @@ class CodeNode:
 
 class CustomEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, TypeNode):
-            return {"name": obj.name, "classifier": obj.classifier.name, "sourceName": obj.sourceName, "sourceType": obj.sourceType.name}
+        if isinstance(obj, SymbolNode):
+            return {"name": obj.name, "classifier": obj.classifier.name, "source": obj.source.srcFile}
         if isinstance(obj, EdgeNode):
             caller = json.loads(json.dumps(obj.caller, cls=CustomEncoder))
             callee = json.loads(json.dumps(obj.callee, cls=CustomEncoder))
@@ -113,15 +114,15 @@ class TypeDependencyDecoder(json.JSONDecoder):
         json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
 
     def object_hook(self, dct):
-        if 'name' in dct and 'classifier' in dct and 'sourceName' in dct and 'sourceType' in dct:
-            return TypeNode(dct['name'], TypeClassifier[dct['classifier']], dct['sourceName'], SourceType[dct['sourceType']])
+        if 'name' in dct and 'classifier' in dct and 'source' in dct:
+            return SymbolNode(dct['name'], TypeClassifier[dct['classifier']], SourceNode(dct['source']))
         if 'caller' in dct and 'callee' in dct and 'refType' in dct:
             return EdgeNode(dct['caller'], dct['callee'], RefType[dct['refType']])
         return dct
 
 
 class EdgeNode:
-    def __init__(self, caller: TypeNode, callee: TypeNode, refType: RefType) -> None:
+    def __init__(self, caller: SymbolNode, callee: SymbolNode, refType: RefType) -> None:
         self.callee = callee
         self.caller = caller
         self.refType = refType
@@ -130,11 +131,11 @@ class EdgeNode:
         return hash(self.caller) ^ hash(self.callee) ^ hash(self.refType)
 
     def __eq__(self, other):
-        if not isinstance(other, TypeNode):
+        if not isinstance(other, SymbolNode):
             return False
 
-        return (self.caller == other.sourceName
-                and self.callee == other.sourceType
+        return (self.caller == other.source
+                and self.callee == other.source
                 and self.refType == other.name)
 
     def __str__(self) -> str:
@@ -151,12 +152,12 @@ if __name__ == '__main__':
     src = SourceNode('foo.h')
     print(src)
 
-    abc = TypeNode('abc', TypeClassifier.ENUM, 'foo', SourceType.HEADER)
+    abc = SymbolNode('abc', TypeClassifier.ENUM, src)
     abc_json = json.dumps(abc, cls=CustomEncoder)
     resurrected_abc = json.loads(abc_json, cls=TypeDependencyDecoder)
     print(f'original: {abc}\njson: {abc_json}\nresurrected: {resurrected_abc}')
 
-    foo = TypeNode('Foo', TypeClassifier.CLASS, 'bar', SourceType.CPP)
+    foo = SymbolNode('Foo', TypeClassifier.CLASS, src)
     edge = EdgeNode(foo, abc, RefType.COMPOSITION)
     edge_json = json.dumps(edge, cls=CustomEncoder)
     resurrected_edge = json.loads(edge_json, cls=TypeDependencyDecoder)

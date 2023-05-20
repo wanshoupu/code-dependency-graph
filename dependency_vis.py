@@ -32,7 +32,7 @@ class EdgeProperty:
 
 
 def get_color(node):
-    return 'red' if node.sourceType == SourceType.CPP else 'black'
+    return 'red' if node.sourceType == SourceType.SOURCE else 'black'
 
 
 def vis_properties(edges, node_scale=3000, smallest_font=1, biggest_font=10):
@@ -162,7 +162,7 @@ def create_nx_graph():
     pos = nx.random_layout(graph, seed=seeds[0])
 
     for node in graph.nodes():
-        nx.draw_networkx_nodes(graph, pos, nodelist=[node], node_shape=get_shape(node.classifier), node_color='red' if node.sourceType == SourceType.CPP else 'blue')
+        nx.draw_networkx_nodes(graph, pos, nodelist=[node], node_shape=get_shape(node.classifier), node_color='red' if node.sourceType == SourceType.SOURCE else 'blue')
     for e in graph.edges():
         nx.draw_networkx_edges(graph, edgelist=[e], arrowstyle=get_style(edge_properties[e].edge.refType), pos=pos)
     label_font_map = {n: p.label for n, p in nodeProperties.items()}

@@ -4,10 +4,13 @@ import json
 import os
 import queue
 import re
+import sys
 import threading
+from collections import defaultdict
+import graphlib
 from typing import Dict, Set
 
-from data_structures import SourceNode, EdgeNode, CustomEncoder, TypeNode, RefType, CodeNode
+from data_structures import SourceNode, EdgeNode, CustomEncoder, SymbolNode, RefType, CodeNode, SourceType
 from src_analyzer import src_proc
 
 node_file = os.path.join(os.path.dirname(__file__), "types.txt")
@@ -69,18 +72,21 @@ def source_proc(root_dir):
     def worker():
         while True:
             src_file = assembly_line.get()
-            src_name = SourceNode(os.path.basename(src_file))
+            srcNode = SourceNode(src_file)
             print(f'Processing {src_file}')
-            ns, incls = src_proc(src_file)
+            ns, incls, fwd_decs = src_proc(src_file)
             if ns:
-                declares[src_name] = ns
+                declares[srcNode] = ns
             if incls:
-                includes[src_name] = incls
+                includes[srcNode] = incls
+            if fwd_decs:
+                fwd_declares[srcNode] = fwd_decs
             print(f'Finished {src_file}')
             assembly_line.task_done()
 
     includes = dict()
     declares = dict()
+    fwd_declares = dict()
     print("process source files at capacity of {} threads".format(max_queue_size))
     ths = [threading.Thread(target=worker, daemon=True) for _ in range(max_queue_size)]
     for t in ths:
@@ -91,7 +97,7 @@ def source_proc(root_dir):
     assembly_line.join()
 
     print('All work completed')
-    return includes, declares
+    return includes, declares, fwd_declares
 
 
 def write_nodes(nodes, file=node_file):
@@ -126,7 +132,7 @@ def methodMatch(statements, name):
     return False
 
 
-def symbol_search(code: CodeNode, types: Set[TypeNode]) -> Dict[TypeNode, RefType]:
+def symbol_search(code: CodeNode, types: Set[SymbolNode]) -> Dict[SymbolNode, RefType]:
     deps = dict()
     if code.inheritance_declare:
         for t in types:
@@ -147,6 +153,98 @@ def symbol_search(code: CodeNode, types: Set[TypeNode]) -> Dict[TypeNode, RefTyp
     return deps
 
 
+def substitute_includes(includes, srcs: Set[SourceNode]):
+    def best_match(incl):
+        matches = [s for s in srcFiles.keys() if s.endswith(incl) and os.path.basename(s) == os.path.basename(incl)]
+        if matches:
+            if len(matches) > 1:
+                print(f'More than one src files: {matches} matches {incl}', file=sys.stderr)
+            return matches[0]
+
+    srcFiles = {s.srcFile: s for s in srcs}
+    include_anchors = set.union(*[set(v) for v in includes.values()])
+    lookup = {i: best_match(i.srcFile) for i in include_anchors}
+    for src, incls in includes.items():
+        matched_incls = {srcFiles[lookup[i]] for i in incls if lookup[i]}
+        includes[src] = matched_incls
+
+
+def substitute_fwd_declares(fwd_declares, declares):
+    types = {}
+    for src, fwds in fwd_declares.items():
+        substitutes = defaultdict(set)
+        for s in declares.get(src, set()):
+            substitutes[SymbolNode(s.name, s.classifier, None)].add(s)
+        for g in substitutes.values():
+            if len(g) > 1:
+                print(f'Symbol conflict in src {src}: {list(g)}', file=sys.stderr)
+        for f in fwds:
+            if f not in substitutes:
+                print(f'Fwd decl not found for src {src}: {f}', file=sys.stderr)
+        fwd_declares[src] = {next(iter(substitutes[f])) for f in fwds if f in substitutes}
+
+
+def header_src_dict(srcs):
+    groups = defaultdict(set)
+    for s in srcs:
+        basename = os.path.basename(s.srcFile)
+        filename, _ = os.path.splitext(basename)
+        groups[filename].add(s)
+    result = dict()
+    for g in groups.values():
+        if len(g) > 2:
+            print(f'More than two files sharing the basename: {g}', file=sys.stderr)
+        srcTypes = defaultdict(set)
+        for s in g:
+            srcTypes[s.sourceType].add(s)
+        if any(len(v) > 1 for v in srcTypes.values()):
+            print(f'Header-Source violates one-one relation: {g}', file=sys.stderr)
+        if len(srcTypes) == len(SourceType):
+            result[next(iter(srcTypes[SourceType.HEADER]))] = next(iter(srcTypes[SourceType.SOURCE]))
+    return result
+
+
+def sort_topological(includes):
+    ts = graphlib.TopologicalSorter(includes)
+    return tuple(ts.static_order())
+
+
+def extended_declares(declares, includes):
+    """
+    includes form a DAG. This function finds the closure of symbols available in each file (header or source)
+    """
+    result = dict()
+    self_includes = {s: [i for i in ins if i in declares] for s, ins in includes.items()}
+    srcs = sort_topological(self_includes)
+    discreteSrcs = tuple(declares.keys() - set(srcs))
+    for src in srcs + discreteSrcs:
+        sets = [result.get(i, set()) or set(declares.get(i, dict()).keys()) for i in includes.get(src, set())]
+        result[src] = set.union(set(declares.get(src, dict()).keys()), *sets)
+    return result
+
+
+def deferred_declares(extendedDeclares, headToSrc):
+    result = dict()
+    for src, symbols in extendedDeclares.items():
+        result[src] = set(symbols)
+        if src in headToSrc:
+            result[src] |= extendedDeclares[headToSrc[src]]
+    return result
+
+
+def identify_symbol_src(includes: dict, declares: dict, fwd_declares: dict):
+    srcs = includes.keys() | declares.keys() | fwd_declares.keys()
+    substitute_includes(includes, srcs)
+    extendedDeclares = extended_declares(declares, includes)
+    headerToSrc = header_src_dict(srcs)
+    # verify header to src
+    for h, s in headerToSrc.items():
+        if h not in includes[s]:
+            print(f'Error: source file {s} should but does not include header {h}', file=sys.stderr)
+    deferredDeclares = deferred_declares(extendedDeclares, headerToSrc)
+    substitute_fwd_declares(fwd_declares, deferredDeclares)
+
+
 def dep_analysis(folders):
     def get_included_types(src):
         included_types = set()
@@ -157,15 +255,19 @@ def dep_analysis(folders):
 
     includes = dict()
     declares = dict()
+    fwd_declares = dict()
     for folder in folders:
-        i, d = source_proc(folder)
+        i, d, f = source_proc(folder)
         includes.update(i)
         declares.update(d)
+        fwd_declares.update(f)
 
+    identify_symbol_src(includes, declares, fwd_declares)
     nodes = {k for v in declares.values() for k in v.keys()}
     edges = set()
     for src, types in declares.items():
         included_types = get_included_types(src)
+        fwd_types = fwd_declares.get(src, set())
         for t, code in types.items():
             # for each declared type t, search code for dependencies in included_types
             deps = symbol_search(code, included_types)
@@ -187,7 +289,7 @@ def verify_data(nodes, edges):
     referenced_nodes = set(e.callee for e in edges) | set(e.caller for e in edges)
     unref_nodes = nodes - referenced_nodes
     if unref_nodes:
-        print(f'Here are unreferenced types: {unref_nodes}')
+        print(f'Unreferenced types: {unref_nodes}', file=sys.stderr)
 
     print('Data verified and no anomaly found')
 

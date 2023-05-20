@@ -2,3 +2,4 @@ graphviz
 matplotlib
 networkx
 plotly
+graphlib
