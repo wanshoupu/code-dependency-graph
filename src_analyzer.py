@@ -15,7 +15,7 @@ valid_headers = [['.h', '.hpp'], 'red']
 valid_sources = [['.c', '.cc', '.cpp'], 'blue']
 valid_extensions = valid_headers[0] + valid_sources[0]
 
-fwd_decl_regex = r'(class|struct|enum(?: class)?) +([_a-zA-Z][_a-zA-Z0-9]*)\s*;'
+fwd_decl_regex = r'(?<!friend)\s+(class|struct|enum(?: class)?) +([_a-zA-Z][_a-zA-Z0-9]*)\s*;'
 fwd_decl_pattern = re.compile(fwd_decl_regex)
 type_declare_regex = r'(class|struct|enum(?: class)?) +([_a-zA-Z][_a-zA-Z0-9]*)\s*(:[^\{]+)?\{'
 type_declare_pattern = re.compile(type_declare_regex)
