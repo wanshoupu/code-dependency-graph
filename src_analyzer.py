@@ -38,11 +38,7 @@ def search_type_declares(code, src_file):
         if not n:
             print(f'Source file {block} contains invalid type declaration', file=sys.stderr)
 
-        classifier = TypeClassifier.parseval(t)
-        if classifier is None:
-            print(f'Block "{block}" do not have a proper TypeClassifier', file=sys.stderr)
-
-        symbol = SymbolNode(n, classifier, srcNode)
+        symbol = SymbolNode(n, t, srcNode)
         classBody = parse_class_body(code[block.end():])
         assert classBody, f'{symbol} has no body'
         result[symbol] = CodeNode(class_body=classBody, inheritance_declare=d or None)

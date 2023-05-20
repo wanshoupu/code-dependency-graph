@@ -178,9 +178,6 @@ def substitute_fwd_declares(fwd_declares, declares):
         for g in substitutes.values():
             if len(g) > 1:
                 print(f'Symbol conflict in src {src}: {list(g)}', file=sys.stderr)
-        for f in fwds:
-            if f not in substitutes:
-                print(f'Fwd decl not found for src {src}: {f}', file=sys.stderr)
         fwd_declares[src] = {next(iter(substitutes[f])) for f in fwds if f in substitutes}
 
 
@@ -270,7 +267,7 @@ def dep_analysis(folders):
         fwd_types = fwd_declares.get(src, set())
         for t, code in types.items():
             # for each declared type t, search code for dependencies in included_types
-            deps = symbol_search(code, included_types)
+            deps = symbol_search(code, included_types | fwd_types)
             for d, refType in deps.items():
                 edges.add(EdgeNode(t, d, refType))
     return nodes, edges

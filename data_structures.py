@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import sys
 from enum import Enum
 
 
@@ -56,12 +57,17 @@ class SourceNode:
 
 
 class SymbolNode:
-    def __init__(self, name, classifier: TypeClassifier, source: SourceNode) -> None:
+    def __init__(self, name, classifier, source: SourceNode) -> None:
         # class name
         self.name = name
 
         self.source = source
-        self.classifier = classifier
+        if isinstance(classifier, TypeClassifier):
+            self.classifier = classifier
+        elif isinstance(classifier, str):
+            self.classifier = TypeClassifier.parseval(classifier)
+        if self.classifier is None:
+            print(f'"{classifier}" is not a proper TypeClassifier', file=sys.stderr)
 
     def __hash__(self) -> int:
         return hash(self.name) ^ hash(self.source) ^ hash(self.classifier)
