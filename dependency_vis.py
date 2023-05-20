@@ -9,8 +9,8 @@ import graphviz as vis
 
 from data_structures import TypeDependencyDecoder, SourceType, RefType, TypeClassifier, EdgeNode
 
-node_file = os.path.join(os.path.dirname(__file__), "nodes.txt")
-edge_file = os.path.join(os.path.dirname(__file__), "edges.txt")
+node_file = os.path.join(os.path.dirname(__file__), "types.txt")
+edge_file = os.path.join(os.path.dirname(__file__), "type-dependencies.txt")
 graphvis_file = os.path.join(os.path.dirname(edge_file), "graph")
 nx_graph_file = os.path.join(os.path.dirname(edge_file), ".nxgraph.pdf")
 
@@ -32,7 +32,7 @@ class EdgeProperty:
 
 
 def get_color(node):
-    return 'red' if node.sourceType == SourceType.SOURCE else 'black'
+    return 'red' if node.source.sourceType == SourceType.SOURCE else 'black'
 
 
 def vis_properties(edges, node_scale=3000, smallest_font=1, biggest_font=10):
